@@ -1,11 +1,11 @@
-@import "tailwindcss";
-@import "tw-animate-css";
+@import 'tailwindcss';
+@import 'tw-animate-css';
 
 @custom-variant dark (&:is(.dark *));
 
 @font-face {
   font-family: 'Pretendard';
-  /*src: url('/src/assets/PretendardVariable.woff2') format('woff2');*/
+  src: url('./PretendardVariable.woff2') format('woff2');
   font-weight: 45 920; /* 가변 폰트의 전체 웨이트 범위 지정 */
   font-style: normal;
   font-display: swap; /* 폰트 로딩 성능 개선 */
@@ -81,7 +81,6 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
-
 }
 
 @theme inline {
@@ -143,7 +142,7 @@
   }
 
   button:not([disabled]),
-  [role="button"]:not([disabled]) {
+  [role='button']:not([disabled]) {
     cursor: pointer;
   }
 }
