@@ -1,10 +1,13 @@
 import { HashRouter, Route, Routes } from 'react-router-dom'
-import { SettingsPage } from '@/pages/settings-page'
 import { Toaster } from 'sonner'
-import { ThemeProvider } from './components/theme-provider'
+import { AppSidebar } from '@/components/app-sidebar'
+import { LoadingOverlay } from '@/components/loading-overlay'
+import { SiteHeader } from '@/components/site-header'
+import { ThemeProvider } from '@/components/theme-provider'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
-import { AppSidebar } from './components/app-sidebar'
-import { SiteHeader } from './components/site-header'
+import { AboutPage } from '@/pages/about-page'
+import { AlertsPage } from '@/pages/alerts-page'
+import { SettingsPage } from '@/pages/settings-page'
 
 function App() {
   return (
@@ -18,12 +21,13 @@ function App() {
               <Routes>
                 <Route path="/" element={<SettingsPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
-                {/*<Route path="/alerts" element={<AlertsPage />} />*/}
-                {/*<Route path="/about" element={<AboutPage />} />*/}
+                <Route path="/alerts" element={<AlertsPage />} />
+                <Route path="/about" element={<AboutPage />} />
               </Routes>
             </main>
           </SidebarInset>
           <Toaster position="top-right" richColors />
+          <LoadingOverlay />
         </SidebarProvider>
       </HashRouter>
     </ThemeProvider>

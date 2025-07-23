@@ -9,11 +9,13 @@
   "compilerOptions": {
     "composite": true,
     "jsx": "react-jsx",
-    "baseUrl": ".",
+
+    // 1. 기준점을 렌더러 소스 코드 폴더로 명확히 변경합니다.
+    "baseUrl": "./src/renderer/src",
+
+    // 2. baseUrl이 변경되었으므로, @/* 는 해당 폴더 바로 아래를 가리키도록 수정합니다.
     "paths": {
-      "@/*": [
-        "./src/renderer/src/*"
-      ]
+      "@/*": ["./*"]
     }
   }
 }

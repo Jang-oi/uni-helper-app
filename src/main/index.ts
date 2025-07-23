@@ -1,12 +1,12 @@
 // src/main/index.ts
 
-import { app, shell, BrowserWindow, Tray, Menu } from 'electron'
 import { join } from 'path'
-import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-
-const icon = join(__dirname, '../../build/icon.ico')
+import { electronApp, is, optimizer } from '@electron-toolkit/utils'
+import { app, BrowserWindow, Menu, shell, Tray } from 'electron'
 // 1. IPC 핸들러 초기화 함수 import
 import { initializeIpcHandlers } from './ipc-handler'
+
+const icon = join(__dirname, '../../build/icon.ico')
 
 let mainWindow: BrowserWindow
 let tray: Tray
@@ -32,6 +32,7 @@ function createWindow(): void {
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 900,
+    title: '업무 모니터',
     show: false,
     resizable: false,
     autoHideMenuBar: true,

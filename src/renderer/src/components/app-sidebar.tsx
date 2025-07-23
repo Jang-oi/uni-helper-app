@@ -1,6 +1,5 @@
-import { Bell, Info, Settings } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
-
+import { Bell, Info, Settings } from 'lucide-react'
 import {
   Sidebar,
   SidebarContent,
