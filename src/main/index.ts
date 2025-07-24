@@ -6,7 +6,7 @@ import { app, BrowserWindow, Menu, shell, Tray } from 'electron'
 // 1. IPC 핸들러 초기화 함수 import
 import { initializeIpcHandlers } from './ipc-handler'
 
-const icon = join(__dirname, '../../build/icon.ico')
+export const uniIcon = join(__dirname, '../../build/icon.ico')
 
 let mainWindow: BrowserWindow
 let tray: Tray
@@ -36,7 +36,7 @@ function createWindow(): void {
     show: false,
     resizable: false,
     autoHideMenuBar: true,
-    icon,
+    icon: uniIcon,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false
@@ -76,7 +76,7 @@ function createWindow(): void {
 
 // 5. 트레이 아이콘 생성 함수
 const createTray = () => {
-  tray = new Tray(icon)
+  tray = new Tray(uniIcon)
   const contextMenu = Menu.buildFromTemplate([
     {
       label: '종료',
