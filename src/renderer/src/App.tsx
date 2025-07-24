@@ -17,7 +17,7 @@ function App() {
           <AppSidebar />
           <SidebarInset>
             <SiteHeader />
-            <main className="px-4 md:px-10 lg:px-20 py-6">
+            <main className="px-6 py-6">
               <Routes>
                 <Route path="/" element={<SettingsPage />} />
                 <Route path="/settings" element={<SettingsPage />} />

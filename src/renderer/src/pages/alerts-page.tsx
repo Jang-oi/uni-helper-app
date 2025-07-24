@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Bell, Clock, User } from 'lucide-react'
+import { AlertTriangle, Bell, Clock, Hourglass, Timer, User } from 'lucide-react'
 import { toast } from 'sonner'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAppStore } from '@/store/app-store'
-import { AlertItem, AlertsDataTable } from '../components/ui/alerts-data-table'
+import { AlertsDataTable, type AlertItem } from '../components/ui/alerts-data-table'
 import { Badge } from '../components/ui/badge'
 
 export function AlertsPage() {
@@ -14,6 +13,11 @@ export function AlertsPage() {
   const [lastChecked, setLastChecked] = useState<string | null>(null)
   const { isMonitoring } = useAppStore()
   const [activeTab, setActiveTab] = useState('all')
+
+  // 통계 계산
+  const urgentCount = alerts.filter((alert) => alert.isUrgent).length
+  const delayedCount = alerts.filter((alert) => alert.isDelayed).length
+  const pendingCount = alerts.filter((alert) => alert.isPending).length
 
   // 알림 목록 불러오기
   const loadAlerts = async () => {
@@ -37,19 +41,16 @@ export function AlertsPage() {
   }
 
   useEffect(() => {
-    // 앱 상태와 관계없이 이벤트 리스너는 항상 등록
     const newAlertsListener = window.electron.ipcRenderer.on('new-alerts-available', loadAlerts)
     return () => {
       newAlertsListener()
     }
-  }, []) // 빈 배열로 마운트 시 한 번만 실행
+  }, [])
 
   useEffect(() => {
-    // 모니터링이 시작될 때만 최초 데이터 로드
     if (isMonitoring) {
       loadAlerts()
     } else {
-      // 모니터링 중지 시 데이터 초기화
       setAlerts([])
       setPersonalRequests([])
       setLastChecked(null)
@@ -57,78 +58,69 @@ export function AlertsPage() {
   }, [isMonitoring])
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="flex flex-col h-[calc(95vh-80px)] space-y-2">
       {isMonitoring && (
-        <div className="p-4 rounded-lg mb-1">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
-              <Clock className="h-5 w-5" />
-            </div>
-            <div>
-              <h3 className="font-medium">알림 상태</h3>
-              <p className="text-sm text-muted-foreground">{lastChecked ? `마지막 확인: ${lastChecked}` : '알림을 확인하는 중입니다...'}</p>
+        <div className="flex items-center gap-3 p-3 rounded-lg border border-l-4 border-l-blue-500 bg-blue-50/30 dark:bg-blue-950/10">
+          <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-medium text-blue-900 dark:text-blue-100">
+              알림 상태 - {lastChecked ? `마지막 확인: ${lastChecked}` : '확인 중...'}
             </div>
           </div>
-
-          <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30">
-              <span className="inline-flex h-2 w-2 rounded-full bg-red-500 animate-ping" />
-              <span className="text-sm text-red-600 dark:text-red-400">긴급 요청</span>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1">
+              <AlertTriangle className="h-3 w-3 text-red-600" />
+              <span className="text-xs font-medium text-red-600">긴급 {urgentCount}</span>
             </div>
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30">
-              <span className="inline-flex h-2 w-2 rounded-full bg-amber-500 animate-ping" />
-              <span className="text-sm text-amber-600 dark:text-amber-400">처리 지연</span>
+            <div className="flex items-center gap-1">
+              <Timer className="h-3 w-3 text-amber-600" />
+              <span className="text-xs font-medium text-amber-600">지연 {delayedCount}</span>
             </div>
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/30">
-              <span className="inline-flex h-2 w-2 rounded-full bg-blue-500 animate-ping" />
-              <span className="text-sm text-blue-600 dark:text-blue-400">1시간 미처리</span>
+            <div className="flex items-center gap-1">
+              <Hourglass className="h-3 w-3 text-blue-600" />
+              <span className="text-xs font-medium text-blue-600">미처리 {pendingCount}</span>
             </div>
           </div>
         </div>
       )}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 mb-1">
-          <TabsTrigger value="all" className="flex items-center gap-2">
-            <Bell className="h-4 w-4" />
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
+        <TabsList className="grid w-full grid-cols-2 h-8">
+          <TabsTrigger value="all" className="flex items-center gap-1 text-xs">
+            <Bell className="h-3 w-3" />
             전체 알림
-            <Badge variant="secondary" className="ml-1">
+            <Badge variant="secondary" className="ml-1 text-[10px] px-1 py-0 h-4">
               {alerts.length}
             </Badge>
           </TabsTrigger>
-          <TabsTrigger value="personal" className="flex items-center gap-2">
-            <User className="h-4 w-4" />내 처리 건
-            <Badge variant="secondary" className="ml-1">
+          <TabsTrigger value="personal" className="flex items-center gap-1 text-xs">
+            <User className="h-3 w-3" />내 처리 건
+            <Badge variant="secondary" className="ml-1 text-[10px] px-1 py-0 h-4">
               {personalRequests.length}
             </Badge>
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="all" className="mt-0">
-          <Card>
-            <CardHeader>
-              <CardTitle>전체 알림 내역</CardTitle>
-              <CardDescription>
-                컬럼 헤더를 클릭하여 정렬할 수 있습니다. (Shift 키를 누르고 여러 헤더 클릭 시 다중 정렬 가능)
-              </CardDescription>
+        <TabsContent value="all" className="flex-1 mt-2">
+          <Card className="flex flex-col h-full">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">전체 알림 내역</CardTitle>
+              <CardDescription className="text-xs">헤더 클릭으로 정렬 가능</CardDescription>
             </CardHeader>
-            <CardContent>
-              <ScrollArea className="h-[calc(84vh-300px)]">
-                <AlertsDataTable data={alerts} />
-              </ScrollArea>
+            <CardContent className="flex-1 p-2">
+              <AlertsDataTable data={alerts} />
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="personal" className="mt-0">
-          <Card>
-            <CardHeader>
-              <CardTitle>내 처리 건</CardTitle>
-              <CardDescription>현재 사용자가 처리 중인 접수 건을 표시합니다.</CardDescription>
+        <TabsContent value="personal" className="flex-1 mt-2">
+          <Card className="flex flex-col h-full">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">내 처리 건</CardTitle>
+              <CardDescription className="text-xs">현재 사용자 처리 중인 접수 건</CardDescription>
             </CardHeader>
-            <CardContent>
-              <ScrollArea className="h-[calc(84vh-300px)]">
-                <AlertsDataTable data={personalRequests} />
-              </ScrollArea>
+            <CardContent className="flex-1 p-2">
+              <AlertsDataTable data={personalRequests} />
             </CardContent>
           </Card>
         </TabsContent>

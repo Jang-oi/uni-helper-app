@@ -1,12 +1,12 @@
-import * as React from 'react'
-import { ColumnDef, flexRender, getCoreRowModel, getSortedRowModel, SortingState, useReactTable } from '@tanstack/react-table'
-import { ArrowUpDown, CalendarPlus, ExternalLink } from 'lucide-react'
+import { useState } from 'react'
+import { flexRender, getCoreRowModel, getSortedRowModel, useReactTable, type ColumnDef, type SortingState } from '@tanstack/react-table'
+import { CalendarPlus, RotateCcw } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
-// AlertItem 타입 정의 (alerts-page.tsx와 동일하게 유지)
 export interface AlertItem {
   SR_IDX: string
   REQ_TITLE: string
@@ -34,138 +34,234 @@ const getStatusScore = (item: AlertItem): number => {
 
 function getStatusVariant(status: string): 'default' | 'secondary' | 'destructive' | 'outline' {
   const statusLower = status.toLowerCase()
-
-  if (statusLower.includes('처리')) {
-    return 'default'
-  } else if (statusLower.includes('요청')) {
-    return 'secondary'
-  } else if (statusLower.includes('고객사')) {
-    return 'destructive'
-  } else {
-    return 'outline'
-  }
+  if (statusLower.includes('처리')) return 'default'
+  if (statusLower.includes('요청')) return 'secondary'
+  if (statusLower.includes('고객사')) return 'destructive'
+  return 'outline'
 }
 
-// 텍스트 자르기 함수
 function truncateText(text: string, maxLength: number) {
   if (!text || text.length <= maxLength) return { isTruncated: false, displayText: text || '' }
   return { isTruncated: true, displayText: text.slice(0, maxLength) + '...' }
 }
 
 const getRowStyle = (row: any) => {
-  if (row.original.isUrgent) return 'bg-red-50 dark:bg-red-950/20'
-  if (row.original.isDelayed) return 'bg-amber-50 dark:bg-amber-950/20'
-  if (row.original.isPending) return 'bg-blue-50 dark:bg-blue-950/20'
-  return ''
+  if (row.original.isUrgent) return 'bg-red-50/50 dark:bg-red-950/10 hover:bg-red-50 dark:hover:bg-red-950/20'
+  if (row.original.isDelayed) return 'bg-amber-50/50 dark:bg-amber-950/10 hover:bg-amber-50 dark:hover:bg-amber-950/20'
+  if (row.original.isPending) return 'bg-blue-50/50 dark:bg-blue-950/10 hover:bg-blue-50 dark:hover:bg-blue-950/20'
+  return 'hover:bg-muted/30'
 }
 
-// ✨ 2. 컬럼 정의 재설계 (각 컬럼에 독립적인 정렬 로직 부여)
 const columns: ColumnDef<AlertItem>[] = [
   {
     id: 'priority',
+    accessorFn: (row) => getPriorityFlagScore(row),
     header: ({ column }) => (
-      <Button variant="ghost" className="w-full" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-6 px-1 text-xs font-medium w-full justify-start"
+        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+      >
         우선순위
-        <ArrowUpDown className="ml-2 h-4 w-4" />
       </Button>
     ),
     cell: ({ row }) => {
       const item = row.original
-      if (item.isUrgent) return <span className="text-red-600 font-medium">긴급</span>
-      if (item.isDelayed) return <span className="text-amber-600 font-medium">지연</span>
-      if (item.isPending) return <span className="text-blue-600 font-medium">미처리</span>
-      return <span className="text-muted-foreground">-</span>
+      if (item.isUrgent)
+        return (
+          <Badge variant="destructive" className="text-[11px] px-1 py-0 h-4">
+            긴급
+          </Badge>
+        )
+      if (item.isDelayed) return <Badge className="text-[11px] px-1 py-0 h-4 bg-amber-100 text-amber-800 hover:bg-amber-100">지연</Badge>
+      if (item.isPending)
+        return (
+          <Badge variant="outline" className="text-[11px] px-1 py-0 h-4 border-blue-200 text-blue-700">
+            미처리
+          </Badge>
+        )
+      return <span className="text-[10px] text-muted-foreground">-</span>
     },
-    sortingFn: (rowA, rowB) => getPriorityFlagScore(rowA.original) - getPriorityFlagScore(rowB.original),
-    size: 20
+    size: 40
   },
   {
     accessorKey: 'CM_NAME',
     header: ({ column }) => (
-      <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-6 px-1 text-xs font-medium w-full justify-start"
+        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+      >
         고객사
-        <ArrowUpDown className="ml-2 h-4 w-4" />
       </Button>
     ),
-    size: 20
+    cell: ({ row }) => {
+      const { displayText, isTruncated } = truncateText(row.original.CM_NAME, 8)
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="text-[11px] font-medium cursor-default block">{displayText}</span>
+            </TooltipTrigger>
+            {isTruncated && (
+              <TooltipContent>
+                <p>{row.original.CM_NAME}</p>
+              </TooltipContent>
+            )}
+          </Tooltip>
+        </TooltipProvider>
+      )
+    },
+    size: 70
   },
   {
     accessorKey: 'REQ_TITLE',
-    header: '제목'
+    header: () => (
+      <Button variant="ghost" size="sm" className="h-6 px-1 text-xs font-medium w-full justify-start">
+        제목
+      </Button>
+    ),
+    cell: ({ row }) => {
+      const { displayText, isTruncated } = truncateText(row.original.REQ_TITLE, 30)
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                className="text-xs cursor-pointer block leading-tight text-left hover:text-blue-600 hover:underline transition-colors"
+                onClick={() => window.electron.ipcRenderer.invoke('open-request', row.original.SR_IDX)}
+              >
+                {displayText}
+              </button>
+            </TooltipTrigger>
+            {isTruncated && (
+              <TooltipContent>
+                <p className="max-w-xs">{'클릭하여 상세페이지로 이동'}</p>
+              </TooltipContent>
+            )}
+          </Tooltip>
+        </TooltipProvider>
+      )
+    },
+    size: 200
   },
   {
     accessorKey: 'STATUS',
     header: ({ column }) => (
-      <Button variant="ghost" className="w-full" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-6 px-1 text-xs font-medium w-full justify-start"
+        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+      >
         상태
-        <ArrowUpDown className="ml-2 h-4 w-4" />
       </Button>
     ),
-    cell: ({ row }) => <Badge variant={getStatusVariant(row.original.STATUS)}>{row.original.STATUS}</Badge>,
+    cell: ({ row }) => (
+      <Badge variant={getStatusVariant(row.original.STATUS)} className="text-[10px] px-1 py-0 h-4">
+        {row.original.STATUS}
+      </Badge>
+    ),
     sortingFn: (rowA, rowB) => getStatusScore(rowA.original) - getStatusScore(rowB.original),
-    size: 20
+    size: 50
   },
   {
     accessorKey: 'WRITER',
-    header: '처리자',
-    size: 20
+    header: ({ column }) => (
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-6 px-1 text-xs font-medium w-full justify-start"
+        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+      >
+        처리자
+      </Button>
+    ),
+    cell: ({ row }) => {
+      const { displayText, isTruncated } = truncateText(row.original.WRITER, 6)
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="text-xs cursor-default block">{displayText}</span>
+            </TooltipTrigger>
+            {isTruncated && (
+              <TooltipContent>
+                <p>{row.original.WRITER}</p>
+              </TooltipContent>
+            )}
+          </Tooltip>
+        </TooltipProvider>
+      )
+    },
+    size: 50
   },
   {
     accessorKey: 'REQ_DATE_ALL',
     header: ({ column }) => (
-      <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-6 px-1 text-xs font-medium w-full justify-start"
+        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+      >
         요청일시
-        <ArrowUpDown className="ml-2 h-4 w-4" />
       </Button>
     ),
-    size: 20
+    cell: ({ row }) => {
+      const dateText = row.original.REQ_DATE_ALL
+      const [datePart, timePart] = dateText.includes(' ') ? dateText.split(' ') : [dateText, '']
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="text-xs cursor-default">
+                <div className="font-medium">{datePart}</div>
+                {timePart && <div className="text-xs text-muted-foreground">{timePart}</div>}
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{dateText}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )
+    },
+    size: 80
   },
   {
     id: 'add_schedule',
-    cell: () => (
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => alert('배포일정 추가 로직 연결 필요')}>
-              <CalendarPlus className="h-3.5 w-3.5" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>배포일정 추가</TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+    header: () => (
+      <Button variant="ghost" size="sm" className="h-6 px-1 text-xs font-medium w-full justify-start">
+        배포
+      </Button>
     ),
-    size: 20
-  },
-  {
-    id: 'actions',
-    cell: ({ row }) => (
+    cell: () => (
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
               variant="ghost"
               size="icon"
-              className="h-6 w-6"
-              onClick={() => window.electron.ipcRenderer.invoke('open-request', row.original.SR_IDX)}
+              className="h-5 w-5 hover:bg-blue-100 dark:hover:bg-blue-900/30"
+              onClick={() => alert('배포일정 추가 로직 연결 필요')}
             >
-              <ExternalLink className="h-3.5 w-3.5" />
+              <CalendarPlus className="h-3 w-3" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent>상세페이지 이동</TooltipContent>
+          <TooltipContent>배포일정 추가</TooltipContent>
         </Tooltip>
       </TooltipProvider>
     ),
-    size: 20
+    size: 35
   }
 ]
 
+const initialSorting: SortingState = []
 export function AlertsDataTable({ data }: { data: AlertItem[] }) {
-  // ✨ 3. 기본 정렬을 다중 정렬로 설정 (상태 점수 > 우선순위 점수 > 최신순)
-  const [sorting, setSorting] = React.useState<SortingState>([
-    { id: 'status', desc: true },
-    { id: 'priority', desc: true },
-    { id: 'REQ_DATE_ALL', desc: true }
-  ])
+  const [sorting, setSorting] = useState<SortingState>(initialSorting)
 
   const table = useReactTable({
     data,
@@ -177,39 +273,63 @@ export function AlertsDataTable({ data }: { data: AlertItem[] }) {
   })
 
   return (
-    <div className="rounded-md border">
-      <Table className={'w-[400px]'}>
-        <TableHeader className="sticky top-0 bg-background z-10">
-          {table.getHeaderGroups().map((headerGroup) => (
-            <TableRow key={headerGroup.id}>
-              {headerGroup.headers.map((header) => (
-                <TableHead key={header.id} style={{ width: header.column.getSize() !== 150 ? header.column.getSize() : undefined }}>
-                  {flexRender(header.column.columnDef.header, header.getContext())}
-                </TableHead>
-              ))}
-            </TableRow>
-          ))}
-        </TableHeader>
-        <TableBody>
-          {table.getRowModel().rows?.length ? (
-            table.getRowModel().rows.map((row) => (
-              <TableRow key={row.id} className={getRowStyle(row)}>
-                {row.getVisibleCells().map((cell) => (
-                  <TableCell key={cell.id} className="py-2 px-2 text-xs truncate">
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </TableCell>
+    <div className="w-full">
+      <div className="flex items-center justify-end py-1">
+        <Button variant="ghost" size="sm" onClick={() => setSorting(initialSorting)} className="h-7 text-xs">
+          <RotateCcw className="mr-1.5 h-3 w-3" />
+          정렬 초기화
+        </Button>
+      </div>
+      <ScrollArea className="h-[calc(66vh-80px)]">
+        <Table className="w-full" style={{ tableLayout: 'fixed' }}>
+          <TableHeader className="sticky top-0 z-30 bg-background/95 backdrop-blur-sm border-b">
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id} className="hover:bg-transparent border-b">
+                {headerGroup.headers.map((header) => (
+                  <TableHead
+                    key={header.id}
+                    className="h-8 px-2 text-left font-medium text-muted-foreground border-r last:border-r-0 bg-muted/50"
+                    style={{
+                      width: `${header.getSize()}px`,
+                      minWidth: `${header.getSize()}px`,
+                      maxWidth: `${header.getSize()}px`
+                    }}
+                  >
+                    {flexRender(header.column.columnDef.header, header.getContext())}
+                  </TableHead>
                 ))}
               </TableRow>
-            ))
-          ) : (
-            <TableRow>
-              <TableCell colSpan={columns.length} className="h-24 text-center">
-                데이터가 없습니다.
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map((row) => (
+                <TableRow key={row.id} className={`transition-colors ${getRowStyle(row)} border-b last:border-b-0`}>
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell
+                      key={cell.id}
+                      className="py-1.5 px-2 text-xs border-r last:border-r-0 align-top overflow-hidden"
+                      style={{
+                        width: `${cell.column.getSize()}px`,
+                        minWidth: `${cell.column.getSize()}px`,
+                        maxWidth: `${cell.column.getSize()}px`
+                      }}
+                    >
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={columns.length} className="h-16 text-center text-muted-foreground text-xs">
+                  데이터가 없습니다.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </ScrollArea>
     </div>
   )
 }

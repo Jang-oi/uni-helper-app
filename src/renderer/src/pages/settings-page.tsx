@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { Bell, Clock, Info, Lock, User } from 'lucide-react'
+import { Bell, CheckCircle, Clock, Info, Lock, User } from 'lucide-react'
 import { toast } from 'sonner'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Slider } from '@/components/ui/slider'
@@ -102,54 +104,67 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <div className="p-4 rounded-lg bg-card border">
-        <div className="flex items-center gap-3">
-          <div className={`p-2 rounded-full ${isMonitoring ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-            <Clock className="h-5 w-5" />
+    <div className="flex flex-col h-[calc(95vh-80px)] space-y-2">
+      {/* 컴팩트한 모니터링 상태 */}
+      <div className="flex items-center gap-3 p-3 rounded-lg border border-l-4 border-l-green-500 bg-green-50/30 dark:bg-green-950/10">
+        <div className="flex items-center gap-2">
+          {isMonitoring ? (
+            <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+          ) : (
+            <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+          )}
+          <div className="text-sm font-medium text-green-900 dark:text-green-100">
+            {isMonitoring ? '모니터링 중' : '모니터링 중지됨'} - 현재 시간: {currentTime}
           </div>
-          <div>
-            <h3 className="font-medium">업무 시간 모니터링 상태</h3>
-            <p className="text-sm text-muted-foreground">
-              {isMonitoring ? '모니터링 중' : '모니터링 중지됨'} • 현재 시간: {currentTime} (
-              {isBusinessHours ? '업무 시간' : '업무 시간 외'})
-            </p>
-          </div>
+        </div>
+        <div className="flex items-center gap-2 ml-auto">
+          <Badge variant={isBusinessHours ? 'default' : 'secondary'} className="text-xs">
+            {isBusinessHours ? '업무 시간' : '업무 시간 외'}
+          </Badge>
+          {isMonitoring && (
+            <Badge variant="outline" className="text-xs border-green-200 text-green-700">
+              활성
+            </Badge>
+          )}
         </div>
       </div>
 
-      <Tabs defaultValue="account" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 mb-6">
-          <TabsTrigger value="account" className="flex items-center gap-2">
-            <User className="h-4 w-4" /> <span>계정 정보</span>
+      <Tabs defaultValue="account" className="flex-1 flex flex-col">
+        <TabsList className="grid w-full grid-cols-2 h-8">
+          <TabsTrigger value="account" className="flex items-center gap-1 text-xs">
+            <User className="h-3 w-3" />
+            계정 정보
           </TabsTrigger>
-          <TabsTrigger value="notifications" className="flex items-center gap-2">
-            <Bell className="h-4 w-4" /> <span>알림 및 시스템</span>
+          <TabsTrigger value="notifications" className="flex items-center gap-1 text-xs">
+            <Bell className="h-3 w-3" />
+            알림 및 시스템
           </TabsTrigger>
         </TabsList>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleToggleMonitoring)}>
-            <TabsContent value="account" className="space-y-6">
-              <div className="bg-card p-6 rounded-lg border shadow-sm">
-                <h3 className="text-lg font-medium mb-4">업무 사이트 접속 정보</h3>
-                <p className="text-sm text-muted-foreground mb-6">업무 사이트 접속에 필요한 계정 정보를 입력하세요.</p>
-                <div className="grid gap-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <form onSubmit={form.handleSubmit(handleToggleMonitoring)} className="flex-1 flex flex-col">
+            <TabsContent value="account" className="flex-1 mt-2">
+              <Card className="flex flex-col h-full">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">업무 사이트 접속 정보</CardTitle>
+                  <CardDescription className="text-xs">업무 사이트 접속에 필요한 계정 정보를 입력하세요.</CardDescription>
+                </CardHeader>
+                <CardContent className="flex-1 space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
                       name="username"
                       rules={{ required: '아이디를 입력해주세요.' }}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>아이디</FormLabel>
+                          <FormLabel className="text-xs">아이디</FormLabel>
                           <FormControl>
                             <div className="relative">
-                              <User className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                              <Input {...field} className="pl-9" disabled={isMonitoring} />
+                              <User className="absolute left-2 top-2 h-3 w-3 text-muted-foreground" />
+                              <Input {...field} className="pl-7 h-8 text-xs" disabled={isMonitoring} />
                             </div>
                           </FormControl>
-                          <FormMessage />
+                          <FormMessage className="text-xs" />
                         </FormItem>
                       )}
                     />
@@ -159,32 +174,33 @@ export function SettingsPage() {
                       rules={{ required: '비밀번호를 입력해주세요.' }}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>비밀번호</FormLabel>
+                          <FormLabel className="text-xs">비밀번호</FormLabel>
                           <FormControl>
                             <div className="relative">
-                              <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                              <Input type="password" {...field} className="pl-9" disabled={isMonitoring} />
+                              <Lock className="absolute left-2 top-2 h-3 w-3 text-muted-foreground" />
+                              <Input type="password" {...field} className="pl-7 h-8 text-xs" disabled={isMonitoring} />
                             </div>
                           </FormControl>
-                          <FormMessage />
+                          <FormMessage className="text-xs" />
                         </FormItem>
                       )}
                     />
                   </div>
+
                   <FormField
                     control={form.control}
                     name="checkInterval"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>확인 주기 (분)</FormLabel>
-                        <div className="flex items-center gap-4">
+                        <FormLabel className="text-xs">확인 주기 (분)</FormLabel>
+                        <div className="flex items-center gap-3">
                           <FormControl>
                             <Input
                               type="number"
                               value={field.value}
                               onChange={(e) => field.onChange(Number(e.target.value))}
                               disabled={isMonitoring}
-                              className="w-[100px]"
+                              className="w-16 h-8 text-xs"
                             />
                           </FormControl>
                           <Slider
@@ -195,66 +211,76 @@ export function SettingsPage() {
                             disabled={isMonitoring}
                             className="flex-1"
                           />
+                          <span className="text-xs text-muted-foreground w-8">{field.value}분</span>
                         </div>
-                        <FormDescription>업무 사이트를 확인할 주기를 분 단위로 설정하세요. (1~40분)</FormDescription>
-                        <FormMessage />
+                        <FormDescription className="text-xs">업무 사이트를 확인할 주기를 분 단위로 설정하세요. (1~40분)</FormDescription>
+                        <FormMessage className="text-xs" />
                       </FormItem>
                     )}
                   />
-                </div>
-              </div>
 
-              <Alert>
-                <Info className="h-4 w-4" /> <AlertTitle>업무 시간 모니터링</AlertTitle>
-                <AlertDescription>모니터링은 평일 07:00~20:00 사이에만 작동합니다.</AlertDescription>
-              </Alert>
-              <div className="flex justify-end">
-                <Button type="submit" variant={isMonitoring ? 'destructive' : 'default'} disabled={isLoading} className="w-40">
-                  {isMonitoring ? '모니터링 중지' : '모니터링 시작'}
-                </Button>
-              </div>
+                  <Alert className="border-blue-200 bg-blue-50/50 dark:bg-blue-950/10">
+                    <Info className="h-3 w-3" />
+                    <AlertTitle className="text-xs">업무 시간 모니터링</AlertTitle>
+                    <AlertDescription className="text-xs">모니터링은 평일 07:00~20:00 사이에만 작동합니다.</AlertDescription>
+                  </Alert>
+
+                  <div className="flex justify-end pt-2">
+                    <Button
+                      type="submit"
+                      variant={isMonitoring ? 'destructive' : 'default'}
+                      disabled={isLoading}
+                      className="h-8 px-6 text-xs"
+                    >
+                      {isMonitoring ? '모니터링 중지' : '모니터링 시작'}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="notifications" className="flex-1 mt-2">
+              <Card className="flex flex-col h-full">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">알림 및 시스템 설정</CardTitle>
+                  <CardDescription className="text-xs">새로운 업무 알림 및 프로그램 시작 설정을 구성합니다.</CardDescription>
+                </CardHeader>
+                <CardContent className="flex-1">
+                  <FormField
+                    control={form.control}
+                    name="enableNotifications"
+                    render={({ field }) => (
+                      <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/20">
+                        <div className="flex items-center gap-3">
+                          <div className="p-1.5 rounded-full bg-primary/10">
+                            <Bell className="h-3 w-3 text-primary" />
+                          </div>
+                          <div>
+                            <FormLabel className="text-xs font-medium">윈도우 알림</FormLabel>
+                            <FormDescription className="text-xs">새로운 업무 요청 시 윈도우 알림을 표시합니다.</FormDescription>
+                          </div>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            className="cursor-pointer scale-75"
+                            checked={field.value}
+                            onCheckedChange={async (checked) => {
+                              const success = await handleSettingChange('enableNotifications', checked)
+                              if (success) {
+                                toast.success(checked ? '알림이 활성화되었습니다' : '알림이 비활성화되었습니다')
+                              } else {
+                                toast.error('알림 설정 저장에 실패했습니다')
+                              }
+                            }}
+                          />
+                        </FormControl>
+                      </div>
+                    )}
+                  />
+                </CardContent>
+              </Card>
             </TabsContent>
           </form>
-
-          <TabsContent value="notifications" className="space-y-6">
-            <div className="bg-card p-6 rounded-lg border shadow-sm">
-              <h3 className="text-lg font-medium mb-4">알림 및 시스템 설정</h3>
-              <p className="text-sm text-muted-foreground mb-6">새로운 업무 알림 및 프로그램 시작 설정을 구성합니다.</p>
-              <div className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="enableNotifications"
-                  render={({ field }) => (
-                    <div className="flex items-center justify-between p-4 rounded-lg border">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-full bg-primary/10">
-                          <Bell className="h-4 w-4 text-primary" />
-                        </div>
-                        <div>
-                          <FormLabel className="text-base font-normal">윈도우 알림</FormLabel>
-                          <FormDescription>새로운 업무 요청 시 윈도우 알림을 표시합니다.</FormDescription>
-                        </div>
-                      </div>
-                      <FormControl>
-                        <Switch
-                          className="cursor-pointer"
-                          checked={field.value}
-                          onCheckedChange={async (checked) => {
-                            const success = await handleSettingChange('enableNotifications', checked)
-                            if (success) {
-                              toast.success(checked ? '알림이 활성화되었습니다' : '알림이 비활성화되었습니다')
-                            } else {
-                              toast.error('알림 설정 저장에 실패했습니다')
-                            }
-                          }}
-                        />
-                      </FormControl>
-                    </div>
-                  )}
-                />
-              </div>
-            </div>
-          </TabsContent>
         </Form>
       </Tabs>
     </div>
