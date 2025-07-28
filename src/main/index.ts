@@ -6,7 +6,9 @@ import { app, BrowserWindow, Menu, shell, Tray } from 'electron'
 // 1. IPC 핸들러 초기화 함수 import
 import { initializeIpcHandlers } from './ipc-handler'
 
-export const uniIcon = join(__dirname, '../../build/icon.ico')
+export const uniIcon = is.dev
+  ? join(__dirname, '../../build/icon.ico') // 개발 환경 경로
+  : join(process.resourcesPath, 'icon.ico') // 빌드된 앱(프로덕션) 경로
 
 let mainWindow: BrowserWindow
 let tray: Tray

@@ -14,6 +14,9 @@ asarUnpack:
 win:
   icon: build/icon.ico
   executableName: uni-helper-app
+extraResources:
+  - from: build/icon.ico
+    to: icon.ico
 nsis:
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}
