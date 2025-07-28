@@ -45,6 +45,19 @@ function createWindow(): void {
     }
   })
 
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    // F12 키를 누르면 개발자 도구를 열거나 닫습니다.
+    if (input.key === 'F12') {
+      mainWindow.webContents.toggleDevTools()
+      event.preventDefault()
+    }
+    // F5 키를 누르면 새로고침 (개발 모드에서만)
+    if (is.dev && input.key === 'F5') {
+      mainWindow.reload()
+      event.preventDefault()
+    }
+  })
+
   // 4. 창이 닫힐 때 종료되는 대신 트레이로 최소화되도록 설정
   mainWindow.on('close', (event) => {
     if (!isQuiting) {
@@ -100,6 +113,10 @@ const createTray = () => {
 app.whenReady().then(() => {
   electronApp.setAppUserModelId('com.unipost.helper')
 
+  app.on('browser-window-created', (_, window) => {
+    optimizer.watchWindowShortcuts(window)
+  })
+
   createTray()
   createWindow()
 
@@ -107,10 +124,6 @@ app.whenReady().then(() => {
 
   app.on('activate', function () {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
-  })
-
-  app.on('browser-window-created', (_, window) => {
-    optimizer.watchWindowShortcuts(window)
   })
 })
 

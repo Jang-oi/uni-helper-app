@@ -9,7 +9,8 @@ export function UpdateNotifier() {
 
   // IPC 이벤트 리스너 등록
   useEffect(() => {
-    const removeListener = window.electron.ipcRenderer.on('update-status', (data: any) => {
+    const removeListener = window.electron.ipcRenderer.on('update-status', (_event, data: any) => {
+      console.log('Received update status from main:', data) // 디버깅용 로그
       const { status, ...info } = data
 
       if (status === 'error') toast.error('업데이트 오류', { description: info.error || '알 수 없는 오류가 발생했습니다.' })

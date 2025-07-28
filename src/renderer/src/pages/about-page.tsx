@@ -8,59 +8,77 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { UpdateDialog } from '@/components/ui/update-dialog'
-import { useUpdateStore } from '@/store/update-store' // zustand 스토어 import
+import { UpdateNotifier } from '@/components/update-nitifier'
+import { useUpdateStore } from '@/store/update-store'
 
-// 앱 정보 타입
 interface AppInfo {
   version: string
-  buildDate?: string
-  platform?: string
-  arch?: string
 }
 
-// 하드코딩된 업데이트 히스토리
-const updateHistory = [
-  {
-    version: '1.2.3',
-    date: '2024-01-15',
-    author: '개발팀',
-    title: '알림 시스템 개선 및 성능 최적화',
-    changes: ['실시간 알림 응답 속도 30% 향상', '메모리 사용량 최적화', '다크 모드 지원 개선', '업무 시간 설정 기능 추가'],
-    type: 'feature'
-  },
-  {
-    version: '1.2.2',
-    date: '2024-01-08',
-    author: '개발팀',
-    title: '보안 패치 및 버그 수정',
-    changes: ['로그인 보안 강화', '테이블 정렬 기능 버그 수정', '시스템 트레이 아이콘 개선', '업데이트 다운로드 안정성 향상'],
-    type: 'fix'
-  },
-  {
-    version: '1.2.1',
-    date: '2024-01-01',
-    author: '개발팀',
-    title: 'UI/UX 개선 및 새로운 기능 추가',
-    changes: ['새로운 설정 페이지 디자인', '알림 필터링 기능 추가', '반응형 레이아웃 개선', '키보드 단축키 지원'],
-    type: 'feature'
-  },
-  {
-    version: '1.2.0',
-    date: '2023-12-20',
-    author: '개발팀',
-    title: '메이저 업데이트 - 모니터링 엔진 개선',
-    changes: ['새로운 모니터링 엔진 도입', '다중 사이트 모니터링 지원', '성능 모니터링 대시보드 추가', '자동 백업 기능 구현'],
-    type: 'major'
-  }
-]
+interface UpdateHistoryItem {
+  version: string
+  date: string
+  author: string
+  title: string
+  changes: string[]
+}
 
 export function AboutPage() {
   const [appInfo, setAppInfo] = useState<AppInfo | null>(null)
   const { status, info, progress, setStatus } = useUpdateStore()
+
+  // --- 2. 히스토리, 로딩, 에러 상태 관리 ---
+  const [history, setHistory] = useState<UpdateHistoryItem[]>([])
+  const [historyLoading, setHistoryLoading] = useState(true)
+  const [historyError, setHistoryError] = useState<string | null>(null)
+
   const [isDownloadDialogOpen, setIsDownloadDialogOpen] = useState(false)
   const [activeTab, setActiveTab] = useState('update')
   const downloadStartedRef = useRef(false)
   const hasCheckedOnMount = useRef(false)
+
+  // --- 3. GitHub API로 릴리즈 노트 가져오는 로직 ---
+  useEffect(() => {
+    async function fetchUpdateHistory() {
+      try {
+        // 본인의 GitHub 사용자명과 레포지토리 이름으로 변경하세요.
+        const owner = 'Jang-oi'
+        const repo = 'uni-helper-app'
+        const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/releases`)
+
+        if (!response.ok) {
+          toast.error('GitHub 릴리즈 정보 로드 실패', { description: 'GitHub 릴리즈 정보를 가져오는 데 실패했습니다.' })
+          throw new Error('GitHub 릴리즈 정보를 가져오는 데 실패했습니다.')
+        }
+
+        const releases = await response.json()
+
+        const formattedHistory = releases.map((release: any): UpdateHistoryItem => {
+          // 릴리즈 본문(body)을 줄바꿈 기준으로 나누고, '*' 또는 '-'로 시작하는 항목만 추출
+          const changes = release.body
+            .split('\n')
+            .filter((line: string) => line.trim().startsWith('* ') || line.trim().startsWith('- '))
+            .map((line: string) => line.trim().substring(2).trim()) // '* ' 또는 '- ' 제거
+
+          return {
+            version: release.tag_name,
+            date: new Date(release.published_at).toLocaleDateString(),
+            author: release.author.login,
+            title: release.name,
+            changes: changes.length > 0 ? changes : ['자세한 내용은 GitHub 릴리즈 노트를 참고하세요.']
+          }
+        })
+
+        setHistory(formattedHistory)
+      } catch (err: any) {
+        setHistoryError(err.message)
+      } finally {
+        setHistoryLoading(false)
+      }
+    }
+
+    fetchUpdateHistory()
+  }, []) // 컴포넌트 마운트 시 1회만 실행
 
   // 앱 정보 로드
   useEffect(() => {
@@ -139,26 +157,9 @@ export function AboutPage() {
     }
   }
 
-  // 업데이트 타입에 따른 배지 색상
-  const getUpdateTypeBadge = (type: string) => {
-    switch (type) {
-      case 'major':
-        return <Badge className="text-[10px] px-1.5 py-0 h-4 bg-red-100 text-red-800 hover:bg-red-100">Major</Badge>
-      case 'feature':
-        return <Badge className="text-[10px] px-1.5 py-0 h-4 bg-blue-100 text-blue-800 hover:bg-blue-100">Feature</Badge>
-      case 'fix':
-        return <Badge className="text-[10px] px-1.5 py-0 h-4 bg-green-100 text-green-800 hover:bg-green-100">Fix</Badge>
-      default:
-        return (
-          <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
-            Update
-          </Badge>
-        )
-    }
-  }
-
   return (
     <div className="flex flex-col h-[calc(95vh-80px)] space-y-2">
+      <UpdateNotifier />
       <UpdateDialog
         isOpen={isDownloadDialogOpen}
         onClose={handleCloseDownloadDialog}
@@ -179,15 +180,8 @@ export function AboutPage() {
           <Badge variant="outline" className="text-xs text-purple-700">
             버전 {appInfo?.version || '1.0.0'}
           </Badge>
-          {status === 'checking' && (
-            <Badge className="text-xs bg-blue-100 text-blue-800 hover:bg-blue-100">
-              <RefreshCw className="mr-1 h-3 w-3 animate-spin" />
-              확인중
-            </Badge>
-          )}
         </div>
       </div>
-
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
         <TabsList className="grid w-full grid-cols-2 h-8">
           <TabsTrigger value="update" className="flex items-center gap-1 text-xs">
@@ -199,33 +193,16 @@ export function AboutPage() {
             업데이트 정보
           </TabsTrigger>
         </TabsList>
-
         <TabsContent value="update" className="flex-1 mt-2">
           <Card className="flex flex-col h-full">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm flex items-center gap-2">
                 <Download className="h-4 w-4" />
                 업데이트 관리
-                <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
-                  자동 확인
-                </Badge>
               </CardTitle>
               <CardDescription className="text-xs">프로그램의 최신 버전을 확인하고 업데이트를 관리합니다.</CardDescription>
             </CardHeader>
             <CardContent className="flex-1 space-y-4">
-              <div className="p-3 rounded-lg border bg-muted/10">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <Tag className="h-4 w-4 text-primary" />
-                    <span className="text-sm font-medium">현재 버전</span>
-                  </div>
-                  <Badge variant="secondary" className="text-xs">
-                    {appInfo?.version || '1.0.0'}
-                  </Badge>
-                </div>
-                <div className="text-xs text-muted-foreground">빌드 날짜: {appInfo?.buildDate || '2024-01-01'}</div>
-              </div>
-
               <Separator />
 
               <div className="space-y-3">
@@ -235,7 +212,7 @@ export function AboutPage() {
                 </div>
 
                 {status === 'checking' && (
-                  <div className="flex items-center gap-2 p-3 rounded-lg bg-blue-50/50 border border-blue-200">
+                  <div className="flex items-center gap-2 p-3 rounded-lg bg-blue-50/50 border">
                     <RefreshCw className="h-4 w-4 animate-spin text-blue-600" />
                     <span className="text-sm text-blue-800">업데이트를 확인하고 있습니다...</span>
                   </div>
@@ -306,54 +283,58 @@ export function AboutPage() {
               <CardTitle className="text-sm flex items-center gap-2">
                 <GitCommit className="h-4 w-4" />
                 업데이트 정보
-                <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
-                  릴리즈 노트
-                </Badge>
               </CardTitle>
               <CardDescription className="text-xs">최근 업데이트 내역과 변경 사항을 확인합니다.</CardDescription>
             </CardHeader>
             <CardContent className="flex-1">
               <ScrollArea className="h-[calc(66vh-80px)]">
                 <div className="space-y-4">
-                  {updateHistory.map((update, index) => (
-                    <div key={update.version} className="border rounded-lg p-4 space-y-3">
-                      <div className="flex items-start justify-between">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <h3 className="text-sm font-semibold">{update.title}</h3>
-                            {getUpdateTypeBadge(update.type)}
-                          </div>
-                          <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                            <div className="flex items-center gap-1">
-                              <Tag className="h-3 w-3" />
-                              <span>v{update.version}</span>
+                  {/* --- 4. 조건부 렌더링으로 히스토리 표시 --- */}
+                  {historyLoading && <p className="text-center text-muted-foreground">로딩 중...</p>}
+                  {historyError && <p className="text-center text-red-500">오류: {historyError}</p>}
+                  {!historyLoading && !historyError && history.length === 0 && (
+                    <p className="text-center text-muted-foreground">릴리즈 노트를 찾을 수 없습니다.</p>
+                  )}
+                  {!historyLoading &&
+                    !historyError &&
+                    history.map((update, index) => (
+                      <div key={update.version} className="border rounded-lg p-4 space-y-3">
+                        <div className="flex items-start justify-between">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <h3 className="text-sm font-semibold">{update.title}</h3>
                             </div>
-                            <div className="flex items-center gap-1">
-                              <Calendar className="h-3 w-3" />
-                              <span>{update.date}</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <User className="h-3 w-3" />
-                              <span>{update.author}</span>
+                            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                              <div className="flex items-center gap-1">
+                                <Tag className="h-3 w-3" />
+                                <span>{update.version}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Calendar className="h-3 w-3" />
+                                <span>{update.date}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <User className="h-3 w-3" />
+                                <span>{update.author}</span>
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
 
-                      <div className="space-y-2">
-                        <h4 className="text-xs font-medium text-muted-foreground">주요 변경 사항</h4>
-                        <ul className="space-y-1">
-                          {update.changes.map((change, changeIndex) => (
-                            <li key={changeIndex} className="flex items-start gap-2 text-xs">
-                              <div className="w-1 h-1 rounded-full bg-primary mt-1.5 flex-shrink-0" />
-                              <span>{change}</span>
-                            </li>
-                          ))}
-                        </ul>
+                        <div className="space-y-2">
+                          <h4 className="text-xs font-medium text-muted-foreground">주요 변경 사항</h4>
+                          <ul className="space-y-1">
+                            {update.changes.map((change, changeIndex) => (
+                              <li key={changeIndex} className="flex items-start gap-2 text-xs">
+                                <div className="w-1 h-1 rounded-full bg-primary mt-1.5 flex-shrink-0" />
+                                <span>{change}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                        {index < history.length - 1 && <Separator className="mt-4" />}
                       </div>
-                      {index < updateHistory.length - 1 && <Separator className="mt-4" />}
-                    </div>
-                  ))}
+                    ))}
                 </div>
               </ScrollArea>
             </CardContent>

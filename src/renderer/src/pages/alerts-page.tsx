@@ -29,9 +29,7 @@ export function AlertsPage() {
       }
     } catch (error) {
       console.error('Failed to load alerts:', error)
-      toast.error('알림 로드 실패', {
-        description: '알림 내역을 불러오는 중 오류가 발생했습니다.'
-      })
+      toast.error('알림 로드 실패', { description: '알림 내역을 불러오는 중 오류가 발생했습니다.' })
     }
   }
 
