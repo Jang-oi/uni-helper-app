@@ -100,7 +100,7 @@ export function AlertsPage() {
 
         <TabsContent value="all" className="flex-1 mt-2">
           <Card className="flex flex-col h-full">
-            <CardHeader className="">
+            <CardHeader>
               <CardTitle className="text-sm">전체 알림 내역</CardTitle>
               <CardDescription className="text-xs">헤더 클릭으로 정렬 가능</CardDescription>
             </CardHeader>

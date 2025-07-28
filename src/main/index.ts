@@ -98,16 +98,17 @@ const createTray = () => {
 app.whenReady().then(() => {
   electronApp.setAppUserModelId('com.unipost.helper')
 
-  app.on('browser-window-created', (_, window) => {
-    optimizer.watchWindowShortcuts(window)
-  })
-
-  createWindow()
   createTray()
+  createWindow()
+
   if (mainWindow) initializeIpcHandlers(mainWindow)
 
   app.on('activate', function () {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
+  })
+
+  app.on('browser-window-created', (_, window) => {
+    optimizer.watchWindowShortcuts(window)
   })
 })
 

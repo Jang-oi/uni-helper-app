@@ -261,7 +261,7 @@ export function AlertsDataTable({ data }: { data: AlertItem[] }) {
           정렬 초기화
         </Button>
       </div>
-      <ScrollArea className="h-[calc(66vh-80px)]">
+      <ScrollArea className="h-[calc(64vh-80px)]">
         <Table className="w-full" style={{ tableLayout: 'fixed' }}>
           <TableHeader className="sticky top-0 z-30 bg-background/95 backdrop-blur-sm border-b">
             {table.getHeaderGroups().map((headerGroup) => (
