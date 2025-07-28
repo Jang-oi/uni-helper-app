@@ -1,5 +1,5 @@
-appId: com.electron.app
-productName: uni-helper-app
+appId: com.company.unipost
+productName: Uni Helper
 directories:
   buildResources: build
 files:
@@ -13,7 +13,7 @@ asarUnpack:
   - resources/**
 win:
   icon: build/icon.ico
-  executableName: uni-helper-app
+  executableName: Uni Helper
 extraResources:
   - from: build/icon.ico
     to: icon.ico

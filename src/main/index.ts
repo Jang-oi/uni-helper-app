@@ -102,7 +102,7 @@ const createTray = () => {
     }
   ])
 
-  tray.setToolTip('Unipost Helper')
+  tray.setToolTip('Uni Helper')
   tray.setContextMenu(contextMenu)
 
   tray.on('click', () => {
@@ -111,7 +111,7 @@ const createTray = () => {
 }
 
 app.whenReady().then(() => {
-  electronApp.setAppUserModelId('com.unipost.helper')
+  electronApp.setAppUserModelId('com.company.unipost')
 
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
