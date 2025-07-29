@@ -5,6 +5,7 @@ import { LoadingOverlay } from '@/components/loading-overlay'
 import { SiteHeader } from '@/components/site-header'
 import { ThemeProvider } from '@/components/theme-provider'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
+import { UniAlertDialog } from '@/components/uni-alert-dialog'
 import { AboutPage } from '@/pages/about-page'
 import { AlertsPage } from '@/pages/alerts-page'
 import { SettingsPage } from '@/pages/settings-page'
@@ -28,6 +29,7 @@ function App() {
           </SidebarInset>
           <Toaster position="top-right" richColors />
           <LoadingOverlay />
+          <UniAlertDialog />
         </SidebarProvider>
       </HashRouter>
     </ThemeProvider>

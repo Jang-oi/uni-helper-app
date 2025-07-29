@@ -1,15 +1,15 @@
-import { useEffect, useRef, useState } from 'react'
-import { ArrowUpCircle, Calendar, Download, GitCommit, Info, RefreshCw, Tag, User } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { AlertCircle, Calendar, CheckCircle, Download, GitCommit, Info, Loader2, RefreshCw, Tag, User } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Progress } from '@/components/ui/progress'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { UpdateDialog } from '@/components/ui/update-dialog'
-import { UpdateNotifier } from '@/components/update-nitifier'
-import { useUpdateStore } from '@/store/update-store'
+import { useAlertDialogStore } from '@/store/alert-dialog-store'
 
 interface AppInfo {
   version: string
@@ -23,21 +23,93 @@ interface UpdateHistoryItem {
   changes: string[]
 }
 
+interface UpdateInfo {
+  version: string
+  releaseDate: string
+  releaseName: string
+  releaseNotes: string
+}
+
+type UpdateStatus = 'idle' | 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error'
+
+interface DownloadProgress {
+  bytesPerSecond: number
+  percent: number
+  transferred: number
+  total: number
+}
+
 export function AboutPage() {
   const [appInfo, setAppInfo] = useState<AppInfo | null>(null)
-  const { status, info, progress, setStatus } = useUpdateStore()
-
-  // --- 2. 히스토리, 로딩, 에러 상태 관리 ---
   const [history, setHistory] = useState<UpdateHistoryItem[]>([])
-  const [historyLoading, setHistoryLoading] = useState(true)
-  const [historyError, setHistoryError] = useState<string | null>(null)
-
-  const [isDownloadDialogOpen, setIsDownloadDialogOpen] = useState(false)
   const [activeTab, setActiveTab] = useState('update')
-  const downloadStartedRef = useRef(false)
-  const hasCheckedOnMount = useRef(false)
 
-  // --- 3. GitHub API로 릴리즈 노트 가져오는 로직 ---
+  // 업데이트 관련 상태
+  const [updateStatus, setUpdateStatus] = useState<UpdateStatus>('idle')
+  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null)
+  const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | null>(null)
+  const [showDownloadDialog, setShowDownloadDialog] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string>('')
+  const { openConfirm } = useAlertDialogStore()
+
+  // 업데이트 상태 리스너 등록
+  useEffect(() => {
+    const handleUpdateStatus = (_event: any, data: any) => {
+      const { status } = data
+      setUpdateStatus(status)
+
+      switch (status) {
+        case 'checking':
+          break
+
+        case 'available':
+          setUpdateInfo({
+            version: data.version,
+            releaseDate: new Date(data.releaseDate).toLocaleDateString(),
+            releaseName: data.releaseName || `버전 ${data.version}`,
+            releaseNotes: data.releaseNotes || '새로운 업데이트가 있습니다.'
+          })
+          break
+
+        case 'not-available':
+          break
+
+        case 'downloading':
+          setDownloadProgress(data)
+          if (!showDownloadDialog) {
+            setShowDownloadDialog(true)
+          }
+          break
+
+        case 'downloaded':
+          setShowDownloadDialog(false)
+
+          // 재시작 확인 다이얼로그
+          openConfirm({
+            title: '업데이트 설치',
+            description: '업데이트 설치를 위해 애플리케이션을 재시작하시겠습니까?\n재시작 후 자동으로 업데이트가 적용됩니다.',
+            confirmText: '재시작',
+            cancelText: '나중에',
+            onConfirm: handleInstallUpdate
+          })
+          break
+
+        case 'error':
+          setErrorMessage(data.error || '업데이트 중 오류가 발생했습니다.')
+          setShowDownloadDialog(false)
+          toast.error('업데이트 오류', { description: data.error || '업데이트 중 오류가 발생했습니다.' })
+          break
+      }
+    }
+
+    window.electron.ipcRenderer.on('update-status', handleUpdateStatus)
+  }, [showDownloadDialog, openConfirm])
+
+  // 페이지 진입 시 자동 업데이트 확인
+  useEffect(() => {
+    checkForUpdates()
+  }, [])
+
   useEffect(() => {
     async function fetchUpdateHistory() {
       try {
@@ -71,9 +143,7 @@ export function AboutPage() {
 
         setHistory(formattedHistory)
       } catch (err: any) {
-        setHistoryError(err.message)
-      } finally {
-        setHistoryLoading(false)
+        toast.error('GitHub 릴리즈 정보 로드 실패', { description: err.message })
       }
     }
 
@@ -93,84 +163,166 @@ export function AboutPage() {
     loadAppInfo()
   }, [])
 
-  // 페이지 진입 시 자동으로 업데이트 확인 (최초 1회)
-  useEffect(() => {
-    if (appInfo && !hasCheckedOnMount.current) {
-      hasCheckedOnMount.current = true
-      checkForUpdates()
-    }
-  }, [appInfo])
-
-  // 전역 상태(status)에 따라 다운로드 다이얼로그 제어
-  useEffect(() => {
-    if (status === 'downloading') {
-      setIsDownloadDialogOpen(true)
-    } else if (status === 'downloaded' || status === 'error') {
-      setIsDownloadDialogOpen(false)
-      downloadStartedRef.current = false
-    }
-  }, [status])
-
-  // 업데이트 확인 함수
   const checkForUpdates = async () => {
     try {
-      setStatus('checking')
+      setUpdateStatus('checking')
       await window.electron.ipcRenderer.invoke('check-for-updates')
     } catch (error) {
-      console.error('업데이트 확인 중 오류:', error)
-      setStatus('error', { error: String(error) })
-      toast.error('업데이트 확인 실패', {
-        description: '업데이트 확인 중 오류가 발생했습니다.'
-      })
+      console.error('업데이트 확인 실패:', error)
+      toast.error('업데이트 확인 실패', { description: '업데이트 확인 중 오류가 발생했습니다.' })
     }
   }
 
-  // 업데이트 다운로드 함수
-  const downloadUpdate = async () => {
+  const handleDownloadUpdate = async () => {
     try {
-      if (downloadStartedRef.current) return
-      downloadStartedRef.current = true
       await window.electron.ipcRenderer.invoke('download-update')
     } catch (error) {
-      console.error('업데이트 다운로드 중 오류:', error)
-      setStatus('error', { error: String(error) })
-      downloadStartedRef.current = false
-      toast.error('업데이트 다운로드 실패', { description: '업데이트 다운로드 중 오류가 발생했습니다.' })
+      console.error('업데이트 다운로드 실패:', error)
+      toast.error('다운로드 실패', { description: '업데이트 다운로드 중 오류가 발생했습니다.' })
     }
   }
 
-  // 업데이트 설치 함수
-  const installUpdate = async () => {
+  const handleInstallUpdate = async () => {
     try {
       await window.electron.ipcRenderer.invoke('install-update')
     } catch (error) {
-      console.error('업데이트 설치 중 오류:', error)
-      toast.error('업데이트 설치 오류', { description: String(error) || '업데이트 설치 중 오류가 발생했습니다.' })
+      console.error('업데이트 설치 실패:', error)
+      toast.error('설치 실패', { description: '업데이트 설치 중 오류가 발생했습니다.' })
     }
   }
 
-  // 다운로드 다이얼로그 닫기 함수
-  const handleCloseDownloadDialog = () => {
-    setIsDownloadDialogOpen(false)
-    if (status === 'downloading') {
-      setStatus('available', info) // 사용자가 임의로 닫으면 다시 받을 수 있도록 상태 변경
+  const getUpdateStatusIcon = () => {
+    switch (updateStatus) {
+      case 'checking':
+        return <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+      case 'available':
+        return <AlertCircle className="h-4 w-4 text-orange-500" />
+      case 'not-available':
+        return <CheckCircle className="h-4 w-4 text-green-500" />
+      case 'downloading':
+        return <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+      case 'downloaded':
+        return <CheckCircle className="h-4 w-4 text-green-500" />
+      case 'error':
+        return <AlertCircle className="h-4 w-4 text-red-500" />
+      default:
+        return <RefreshCw className="h-4 w-4 text-gray-500" />
     }
+  }
+
+  const getUpdateStatusText = () => {
+    switch (updateStatus) {
+      case 'checking':
+        return '업데이트 확인 중...'
+      case 'available':
+        return '새 업데이트 사용 가능'
+      case 'not-available':
+        return '최신 버전입니다'
+      case 'downloading':
+        return '다운로드 중...'
+      case 'downloaded':
+        return '다운로드 완료 - 재시작 필요'
+      case 'error':
+        return '업데이트 오류'
+      default:
+        return '업데이트 확인'
+    }
+  }
+
+  const getUpdateButton = () => {
+    switch (updateStatus) {
+      case 'checking':
+        return (
+          <Button variant="outline" size="sm" disabled>
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            확인 중...
+          </Button>
+        )
+      case 'available':
+        return (
+          <Button size="sm" onClick={handleDownloadUpdate}>
+            <Download className="h-4 w-4 mr-2" />
+            업데이트 다운로드
+          </Button>
+        )
+      case 'downloading':
+        return (
+          <Button variant="outline" size="sm" disabled>
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            다운로드 중...
+          </Button>
+        )
+      case 'downloaded':
+        return (
+          <Button
+            size="sm"
+            onClick={() =>
+              openConfirm({
+                title: '업데이트 설치',
+                description: '업데이트 설치를 위해 애플리케이션을 재시작하시겠습니까?\n재시작 후 자동으로 업데이트가 적용됩니다.',
+                confirmText: '재시작',
+                cancelText: '나중에',
+                onConfirm: handleInstallUpdate
+              })
+            }
+          >
+            지금 재시작
+          </Button>
+        )
+      case 'error':
+        return (
+          <Button variant="outline" size="sm" onClick={checkForUpdates}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            다시 시도
+          </Button>
+        )
+      default:
+        return (
+          <Button variant="outline" size="sm" onClick={checkForUpdates}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            업데이트 확인
+          </Button>
+        )
+    }
+  }
+
+  const getAdditionalInfo = () => {
+    switch (updateStatus) {
+      case 'available':
+        return updateInfo ? (
+          <div className="text-xs text-muted-foreground mt-1">
+            새 버전: {updateInfo.version} • {updateInfo.releaseDate}
+          </div>
+        ) : null
+      case 'downloaded':
+        return <div className="text-xs text-green-600 dark:text-green-400 mt-1">재시작하여 업데이트를 적용하세요</div>
+      case 'error':
+        return errorMessage ? <div className="text-xs text-red-600 dark:text-red-400 mt-1">{errorMessage}</div> : null
+      case 'downloading':
+        return downloadProgress ? (
+          <div className="text-xs text-muted-foreground mt-1">
+            {Math.round(downloadProgress.percent)}% • {formatSpeed(downloadProgress.bytesPerSecond)}
+          </div>
+        ) : null
+      default:
+        return <div className="text-xs text-muted-foreground">현재 버전: {appInfo?.version || '1.0.0'}</div>
+    }
+  }
+
+  const formatBytes = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes'
+    const k = 1024
+    const sizes = ['Bytes', 'KB', 'MB', 'GB']
+    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    return Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+  }
+
+  const formatSpeed = (bytesPerSecond: number) => {
+    return formatBytes(bytesPerSecond) + '/s'
   }
 
   return (
     <div className="flex flex-col h-[calc(95vh-80px)] space-y-2">
-      <UpdateNotifier />
-      <UpdateDialog
-        isOpen={isDownloadDialogOpen}
-        onClose={handleCloseDownloadDialog}
-        version={info.version || ''}
-        progress={progress}
-        downloadSpeed={info.bytesPerSecond || 0}
-        transferred={info.transferred || 0}
-        total={info.total || 0}
-        isComplete={status === 'downloaded'}
-      />
-
       <div className="flex items-center gap-3 p-3 rounded-lg border border-l-4 border-l-purple-500 bg-purple-50/30 dark:bg-purple-950/10">
         <div className="flex items-center gap-2">
           <Info className="h-4 w-4 text-purple-600 dark:text-purple-400" />
@@ -203,75 +355,15 @@ export function AboutPage() {
               <CardDescription className="text-xs">프로그램의 최신 버전을 확인하고 업데이트를 관리합니다.</CardDescription>
             </CardHeader>
             <CardContent className="flex-1 space-y-4">
-              <Separator />
-
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <RefreshCw className="h-4 w-4 text-primary" />
-                  <h4 className="text-sm font-medium">업데이트 상태</h4>
+              <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/30">
+                <div className="flex items-center gap-3">
+                  {getUpdateStatusIcon()}
+                  <div>
+                    <div className="text-sm font-medium">{getUpdateStatusText()}</div>
+                    {getAdditionalInfo()}
+                  </div>
                 </div>
-
-                {status === 'checking' && (
-                  <div className="flex items-center gap-2 p-3 rounded-lg bg-blue-50/50 border">
-                    <RefreshCw className="h-4 w-4 animate-spin text-blue-600" />
-                    <span className="text-sm text-blue-800">업데이트를 확인하고 있습니다...</span>
-                  </div>
-                )}
-
-                {status === 'available' && info.version && (
-                  <div className="space-y-3">
-                    <div className="p-3 rounded-lg bg-green-50/50 border border-green-200">
-                      <div className="flex items-center gap-2 mb-1">
-                        <ArrowUpCircle className="h-4 w-4 text-green-600" />
-                        <span className="text-sm font-medium text-green-800">새 버전 사용 가능</span>
-                      </div>
-                      <div className="text-xs text-green-700">버전 {info.version}으로 업데이트할 수 있습니다.</div>
-                    </div>
-                    <Button onClick={downloadUpdate} className="w-full h-9">
-                      <Download className="mr-2 h-4 w-4" />
-                      {info.version} 버전 업데이트 하기
-                    </Button>
-                  </div>
-                )}
-
-                {status === 'not-available' && (
-                  <div className="space-y-3">
-                    <div className="p-3 rounded-lg bg-gray-50/50 border">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Tag className="h-4 w-4 text-gray-600" />
-                        <span className="text-sm font-medium text-gray-800">최신 버전 사용 중</span>
-                      </div>
-                      <div className="text-xs text-gray-700">현재 최신 버전을 사용하고 있습니다.</div>
-                    </div>
-                    <Button disabled className="w-full h-9 bg-transparent" variant="outline">
-                      <Download className="mr-2 h-4 w-4" />
-                      업데이트 가능한 버전이 없습니다
-                    </Button>
-                  </div>
-                )}
-
-                {status === 'downloaded' && (
-                  <div className="space-y-3">
-                    <div className="p-3 rounded-lg bg-green-50/50 border border-green-200">
-                      <div className="flex items-center gap-2 mb-1">
-                        <ArrowUpCircle className="h-4 w-4 text-green-600" />
-                        <span className="text-sm font-medium text-green-800">업데이트 준비 완료</span>
-                      </div>
-                      <div className="text-xs text-green-700">버전 {info.version}이 다운로드되었습니다.</div>
-                    </div>
-                    <Button onClick={installUpdate} className="w-full h-9">
-                      <ArrowUpCircle className="mr-2 h-4 w-4" />
-                      지금 설치하기
-                    </Button>
-                  </div>
-                )}
-
-                {(status === 'idle' || status === 'error') && (
-                  <Button onClick={checkForUpdates} variant="outline" className="w-full h-9 bg-transparent">
-                    <RefreshCw className="mr-2 h-4 w-4" />
-                    업데이트 다시 확인
-                  </Button>
-                )}
+                {getUpdateButton()}
               </div>
             </CardContent>
           </Card>
@@ -289,58 +381,94 @@ export function AboutPage() {
             <CardContent className="flex-1">
               <ScrollArea className="h-[calc(66vh-80px)]">
                 <div className="space-y-4">
-                  {/* --- 4. 조건부 렌더링으로 히스토리 표시 --- */}
-                  {historyLoading && <p className="text-center text-muted-foreground">로딩 중...</p>}
-                  {historyError && <p className="text-center text-red-500">오류: {historyError}</p>}
-                  {!historyLoading && !historyError && history.length === 0 && (
-                    <p className="text-center text-muted-foreground">릴리즈 노트를 찾을 수 없습니다.</p>
-                  )}
-                  {!historyLoading &&
-                    !historyError &&
-                    history.map((update, index) => (
-                      <div key={update.version} className="border rounded-lg p-4 space-y-3">
-                        <div className="flex items-start justify-between">
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                              <h3 className="text-sm font-semibold">{update.title}</h3>
+                  {history.length === 0 && <p className="text-center text-muted-foreground">릴리즈 노트를 찾을 수 없습니다.</p>}
+                  {history.map((update, index) => (
+                    <div key={update.version} className="border rounded-lg p-4 space-y-3">
+                      <div className="flex items-start justify-between">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-sm font-semibold">{update.title}</h3>
+                          </div>
+                          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                            <div className="flex items-center gap-1">
+                              <Tag className="h-3 w-3" />
+                              <span>{update.version}</span>
                             </div>
-                            <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                              <div className="flex items-center gap-1">
-                                <Tag className="h-3 w-3" />
-                                <span>{update.version}</span>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <Calendar className="h-3 w-3" />
-                                <span>{update.date}</span>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <User className="h-3 w-3" />
-                                <span>{update.author}</span>
-                              </div>
+                            <div className="flex items-center gap-1">
+                              <Calendar className="h-3 w-3" />
+                              <span>{update.date}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <User className="h-3 w-3" />
+                              <span>{update.author}</span>
                             </div>
                           </div>
                         </div>
-
-                        <div className="space-y-2">
-                          <h4 className="text-xs font-medium text-muted-foreground">주요 변경 사항</h4>
-                          <ul className="space-y-1">
-                            {update.changes.map((change, changeIndex) => (
-                              <li key={changeIndex} className="flex items-start gap-2 text-xs">
-                                <div className="w-1 h-1 rounded-full bg-primary mt-1.5 flex-shrink-0" />
-                                <span>{change}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                        {index < history.length - 1 && <Separator className="mt-4" />}
                       </div>
-                    ))}
+
+                      <div className="space-y-2">
+                        <h4 className="text-xs font-medium text-muted-foreground">주요 변경 사항</h4>
+                        <ul className="space-y-1">
+                          {update.changes.map((change, changeIndex) => (
+                            <li key={changeIndex} className="flex items-start gap-2 text-xs">
+                              <div className="w-1 h-1 rounded-full bg-primary mt-1.5 flex-shrink-0" />
+                              <span>{change}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                      {index < history.length - 1 && <Separator className="mt-4" />}
+                    </div>
+                  ))}
                 </div>
               </ScrollArea>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* 다운로드 진행 다이얼로그 */}
+      <Dialog open={showDownloadDialog} onOpenChange={() => {}}>
+        <DialogContent className="sm:max-w-md" onPointerDownOutside={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Download className="h-5 w-5" />
+              업데이트 다운로드 중
+            </DialogTitle>
+            <DialogDescription>새 버전을 다운로드하고 있습니다. 잠시만 기다려주세요.</DialogDescription>
+          </DialogHeader>
+
+          {downloadProgress && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>진행률</span>
+                  <span>{Math.round(downloadProgress.percent)}%</span>
+                </div>
+                <Progress value={downloadProgress.percent} className="w-full" />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 text-xs text-muted-foreground">
+                <div>
+                  <div>다운로드 속도</div>
+                  <div className="font-medium">{formatSpeed(downloadProgress.bytesPerSecond)}</div>
+                </div>
+                <div>
+                  <div>진행 상황</div>
+                  <div className="font-medium">
+                    {formatBytes(downloadProgress.transferred)} / {formatBytes(downloadProgress.total)}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                다운로드 중... 창을 닫지 마세요
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
