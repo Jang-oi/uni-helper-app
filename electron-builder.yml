@@ -1,5 +1,5 @@
 appId: com.company.unipost
-productName: Uni Helper
+productName: Uni-Helper
 directories:
   buildResources: build
 files:
@@ -13,7 +13,7 @@ asarUnpack:
   - resources/**
 win:
   icon: build/icon.ico
-  executableName: Uni Helper
+  executableName: Uni-Helper
 extraResources:
   - from: build/icon.ico
     to: icon.ico
@@ -45,4 +45,4 @@ npmRebuild: false
 publish:
   provider: github
   owner: Jang-oi
-  repo: ${productName}
+  repo: uni-helper-app

@@ -21,7 +21,6 @@ type SettingsFormValues = {
 }
 
 export function SettingsPage() {
-  const [currentTime, setCurrentTime] = useState<string>('')
   const [isBusinessHours, setIsBusinessHours] = useState(true)
   const { setLoading, isLoading, isMonitoring } = useAppStore()
 
@@ -34,7 +33,6 @@ export function SettingsPage() {
     const now = new Date()
     const hours = now.getHours()
     setIsBusinessHours(hours >= 7 && hours < 20)
-    setCurrentTime(now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false }))
   }, [])
 
   // 1분마다 시간 및 업무 시간 상태 업데이트
@@ -112,19 +110,12 @@ export function SettingsPage() {
           ) : (
             <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
           )}
-          <div className="text-sm font-medium text-green-900 dark:text-green-100">
-            {isMonitoring ? '모니터링 중' : '모니터링 중지됨'} - 현재 시간: {currentTime}
-          </div>
+          <div className="text-sm font-medium text-green-900 dark:text-green-100">{isMonitoring ? '모니터링 중' : '모니터링 중지됨'}</div>
         </div>
         <div className="flex items-center gap-2 ml-auto">
           <Badge variant={isBusinessHours ? 'default' : 'secondary'} className="text-xs">
             {isBusinessHours ? '업무 시간' : '업무 시간 외'}
           </Badge>
-          {isMonitoring && (
-            <Badge variant="outline" className="text-xs text-green-700">
-              활성
-            </Badge>
-          )}
         </div>
       </div>
 

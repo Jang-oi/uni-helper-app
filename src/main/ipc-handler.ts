@@ -159,7 +159,7 @@ async function performLogin(username, password) {
 async function checkLoginSession() {
   try {
     if (!supportWindow) return { success: false, message: 'Support window is not available.' }
-    return await supportWindow.webContents.executeJavaScript(`
+    const checkLoginResult = await supportWindow.webContents.executeJavaScript(`
         (function() {
           try {
             // 에러 메시지 확인
@@ -181,6 +181,8 @@ async function checkLoginSession() {
           }
         })();
       `)
+    if (checkLoginResult.message.includes('로그아웃')) supportWindow.loadURL(SUPPORT_URL)
+    return checkLoginResult
   } catch (error: any) {
     return { success: false, message: '로그인 확인 중 오류: ' + error.toString() }
   }
@@ -457,22 +459,6 @@ function stopMonitoring(isAutoPause = false): { success: boolean; message: strin
   return { success: true, message: '모니터링이 중지되었습니다.' }
 }
 
-function getKoreanFormattedDateTime() {
-  const now = new Date()
-
-  // UTC 시간 기준 +9시간 더해서 한국 시간으로 조정
-  const koreaTime = new Date(now.getTime() + 9 * 60 * 60 * 1000)
-
-  const year = koreaTime.getUTCFullYear()
-  const month = String(koreaTime.getUTCMonth() + 1).padStart(2, '0')
-  const date = String(koreaTime.getUTCDate()).padStart(2, '0')
-  const hours = String(koreaTime.getUTCHours()).padStart(2, '0')
-  const minutes = String(koreaTime.getUTCMinutes()).padStart(2, '0')
-  const seconds = String(koreaTime.getUTCSeconds()).padStart(2, '0')
-
-  return `${year}-${month}-${date} ${hours}:${minutes}:${seconds}`
-}
-
 /** 앱의 전체 상태를 주기적으로 확인하고 모니터링 상태를 조절하는 루프 */
 function stateCheckLoop() {
   // 수동 시작이 한 번도 없었다면, 자동 시작 로직을 실행하지 않음
@@ -482,7 +468,6 @@ function stateCheckLoop() {
     // 단, 업무 시간 외에 앱이 켜졌을 때 자동 중지는 필요할 수 있으므로 해당 로직은 유지
     if (isMonitoring && !withinHours) {
       console.log('[State Check] 업무 시간이 아니므로 모니터링을 중지합니다.')
-      console.log(getKoreanFormattedDateTime())
       stopMonitoring(true)
     }
     return
@@ -490,11 +475,9 @@ function stateCheckLoop() {
 
   if (userWantsMonitoring && withinHours && !isMonitoring) {
     console.log('[State Check] 업무 시간이 되어 모니터링을 자동으로 시작합니다.')
-    console.log(getKoreanFormattedDateTime())
     startMonitoring()
   } else if (isMonitoring && !withinHours) {
     console.log('[State Check] 업무 시간이 종료되어 모니터링을 자동으로 중지합니다.')
-    console.log(getKoreanFormattedDateTime())
     stopMonitoring(true)
   }
 }

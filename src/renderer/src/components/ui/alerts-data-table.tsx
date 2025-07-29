@@ -83,7 +83,7 @@ const columns: ColumnDef<AlertItem>[] = [
         )
       return <span className="text-[10px] text-muted-foreground">-</span>
     },
-    size: 35
+    size: 40
   },
   {
     accessorKey: 'CM_NAME',
@@ -227,7 +227,7 @@ const columns: ColumnDef<AlertItem>[] = [
               variant="ghost"
               size="icon"
               className="h-5 w-5 hover:bg-blue-100 dark:hover:bg-blue-900/30"
-              onClick={() => alert('배포일정 추가 로직 연결 필요')}
+              onClick={() => alert('구현 예정 ...')}
             >
               <CalendarPlus className="h-3 w-3" />
             </Button>

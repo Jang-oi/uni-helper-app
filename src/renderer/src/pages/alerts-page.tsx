@@ -66,11 +66,11 @@ export function AlertsPage() {
         <div className="flex items-center gap-2 ml-auto">
           <Badge variant="outline" className="text-xs text-red-600">
             <AlertTriangle className="h-3 w-3" />
-            업무 시간
+            긴급
           </Badge>
           <Badge variant="outline" className="text-xs text-amber-600">
             <Timer className="h-3 w-3" />
-            업무 시간
+            지연
           </Badge>
           <Badge variant="outline" className="text-xs text-blue-600">
             <Hourglass className="h-3 w-3" />

@@ -236,7 +236,7 @@ export function AboutPage() {
 
                 {status === 'not-available' && (
                   <div className="space-y-3">
-                    <div className="p-3 rounded-lg bg-gray-50/50 border border-gray-200">
+                    <div className="p-3 rounded-lg bg-gray-50/50 border">
                       <div className="flex items-center gap-2 mb-1">
                         <Tag className="h-4 w-4 text-gray-600" />
                         <span className="text-sm font-medium text-gray-800">최신 버전 사용 중</span>
