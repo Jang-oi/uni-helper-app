@@ -32,6 +32,20 @@ interface AlertWithFlags extends Alert {
   isPending: boolean
 }
 
+// 일정 관리 관련 타입 추가
+interface Schedule {
+  id: string
+  srIdx: string
+  title: string
+  description: string
+  date: string
+  time: string
+  status: 'pending' | 'completed' | 'cancelled'
+  createdAt: string
+  customerName?: string
+  requestTitle?: string
+}
+
 const SUPPORT_URL = 'https://114.unipost.co.kr/home.uni'
 const BUSINESS_HOURS_START = 7 // 오전 7시
 const BUSINESS_HOURS_END = 20 // 오후 8시
@@ -590,6 +604,85 @@ export function initializeIpcHandlers(win: BrowserWindow): void {
       return { success: true }
     } catch (error: any) {
       return { success: false, message: error.toString() }
+    }
+  })
+
+  // --- 일정 관리 관련 핸들러 ---
+
+  // 일정 목록 조회
+  ipcMain.handle('get-schedules', async () => {
+    try {
+      const schedules = store.get('schedules', []) as Schedule[]
+      return { success: true, schedules }
+    } catch (error: any) {
+      console.error('일정 목록 조회 중 오류:', error)
+      return { success: false, error: error.toString() }
+    }
+  })
+
+  // 일정 추가
+  ipcMain.handle('add-schedule', async (_event, scheduleData) => {
+    try {
+      const schedules = store.get('schedules', []) as Schedule[]
+      const newSchedule: Schedule = {
+        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+        srIdx: scheduleData.srIdx || '',
+        title: scheduleData.title,
+        description: scheduleData.description,
+        date: scheduleData.date,
+        time: scheduleData.time,
+        status: 'pending',
+        createdAt: new Date().toISOString(),
+        customerName: scheduleData.customerName,
+        requestTitle: scheduleData.requestTitle
+      }
+
+      schedules.push(newSchedule)
+      store.set('schedules', schedules)
+
+      return { success: true, schedule: newSchedule }
+    } catch (error: any) {
+      console.error('일정 추가 중 오류:', error)
+      return { success: false, error: error.toString() }
+    }
+  })
+
+  // 일정 상태 업데이트
+  ipcMain.handle('update-schedule-status', async (_event, scheduleId: string, status: Schedule['status']) => {
+    try {
+      const schedules = store.get('schedules', []) as Schedule[]
+      const scheduleIndex = schedules.findIndex((s) => s.id === scheduleId)
+
+      if (scheduleIndex === -1) {
+        return { success: false, error: '일정을 찾을 수 없습니다.' }
+      }
+
+      schedules[scheduleIndex].status = status
+      store.set('schedules', schedules)
+
+      return { success: true }
+    } catch (error: any) {
+      console.error('일정 상태 업데이트 중 오류:', error)
+      return { success: false, error: error.toString() }
+    }
+  })
+
+  // 일정 삭제
+  ipcMain.handle('delete-schedule', async (_event, scheduleId: string) => {
+    try {
+      const schedules = store.get('schedules', []) as Schedule[]
+      const filteredSchedules = schedules.filter((s) => s.id !== scheduleId)
+
+      if (schedules.length === filteredSchedules.length) {
+        return { success: false, error: '일정을 찾을 수 없습니다.' }
+      }
+
+      store.set('schedules', filteredSchedules)
+
+      return { success: true }
+    } catch (error: any) {
+      console.error('일정 삭제 중 오류:', error)
+      return { success: false, error: error.toString() }
     }
   })
 

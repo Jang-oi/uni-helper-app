@@ -1,13 +1,6 @@
 import { Link, useLocation } from 'react-router-dom'
-import { Bell, Info, Settings } from 'lucide-react'
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem
-} from '@/components/ui/sidebar'
+import { Bell, Calendar, Info, Settings } from 'lucide-react'
+import { Sidebar, SidebarContent, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar'
 
 export function AppSidebar() {
   const location = useLocation()
@@ -21,10 +14,7 @@ export function AppSidebar() {
       <SidebarContent>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              isActive={currentPath === '/' || currentPath === '/settings'}
-            >
+            <SidebarMenuButton asChild isActive={currentPath === '/' || currentPath === '/settings'}>
               <Link to="/settings">
                 <Settings className="h-5 w-5" />
                 <span>사용자 설정</span>
@@ -32,11 +22,7 @@ export function AppSidebar() {
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              isActive={currentPath === '/alerts'}
-              data-tutorial="alerts-nav"
-            >
+            <SidebarMenuButton asChild isActive={currentPath === '/alerts'} data-tutorial="alerts-nav">
               <Link to="/alerts">
                 <Bell className="h-5 w-5" />
                 <span>알림</span>
@@ -44,11 +30,15 @@ export function AppSidebar() {
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              isActive={currentPath === '/about'}
-              data-tutorial="about-nav"
-            >
+            <SidebarMenuButton asChild isActive={currentPath === '/schedule'} data-tutorial="about-nav">
+              <Link to="/schedule">
+                <Calendar className="h-5 w-5" />
+                <span>일정</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild isActive={currentPath === '/about'} data-tutorial="about-nav">
               <Link to="/about">
                 <Info className="h-5 w-5" />
                 <span>프로그램 정보</span>

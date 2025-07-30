@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { useScheduleStore } from '../../store/schedule-store'
 
 export interface AlertItem {
   SR_IDX: string
@@ -52,197 +53,206 @@ const getRowStyle = (row: any) => {
   return 'hover:bg-muted/30'
 }
 
-const columns: ColumnDef<AlertItem>[] = [
-  {
-    id: 'priority',
-    accessorFn: (row) => getPriorityFlagScore(row),
-    header: ({ column }) => (
-      <Button
-        variant="ghost"
-        size="sm"
-        className="h-6 px-1 text-xs font-medium w-full justify-start"
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-      >
-        우선순위
-      </Button>
-    ),
-    cell: ({ row }) => {
-      const item = row.original
-      if (item.isUrgent)
-        return (
-          <Badge variant="destructive" className="text-[11px] px-1 py-0 h-4">
-            긴급
-          </Badge>
-        )
-      if (item.isDelayed) return <Badge className="text-[11px] px-1 py-0 h-4 bg-amber-100 text-amber-800 hover:bg-amber-100">지연</Badge>
-      if (item.isPending)
-        return (
-          <Badge variant="outline" className="text-[11px] px-1 py-0 h-4 border-blue-200 text-blue-700">
-            미처리
-          </Badge>
-        )
-      return <span className="text-[10px] text-muted-foreground">-</span>
-    },
-    size: 40
-  },
-  {
-    accessorKey: 'CM_NAME',
-    header: ({ column }) => (
-      <Button
-        variant="ghost"
-        size="sm"
-        className="h-6 px-1 text-xs font-medium w-full justify-start"
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-      >
-        고객사
-      </Button>
-    ),
-    cell: ({ row }) => {
-      const { displayText, isTruncated } = truncateText(row.original.CM_NAME, 8)
-      return (
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="text-[11px] font-medium cursor-default block">{displayText}</span>
-            </TooltipTrigger>
-            {isTruncated && (
-              <TooltipContent>
-                <p>{row.original.CM_NAME}</p>
-              </TooltipContent>
-            )}
-          </Tooltip>
-        </TooltipProvider>
-      )
-    },
-    size: 70
-  },
-  {
-    accessorKey: 'REQ_TITLE',
-    header: () => (
-      <Button variant="ghost" size="sm" className="h-6 px-1 text-xs font-medium w-full justify-start">
-        제목
-      </Button>
-    ),
-    cell: ({ row }) => {
-      const { displayText } = truncateText(row.original.REQ_TITLE, 38)
-      return (
-        <button
-          className="text-xs cursor-pointer block leading-tight text-left hover:text-blue-600 hover:underline transition-colors"
-          onClick={() => window.electron.ipcRenderer.invoke('open-request', row.original.SR_IDX)}
-        >
-          {displayText}
-        </button>
-      )
-    },
-    size: 200
-  },
-  {
-    accessorKey: 'STATUS',
-    header: ({ column }) => (
-      <Button
-        variant="ghost"
-        size="sm"
-        className="h-6 px-1 text-xs font-medium w-full justify-start"
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-      >
-        상태
-      </Button>
-    ),
-    cell: ({ row }) => (
-      <Badge variant={getStatusVariant(row.original.STATUS)} className="text-[10px] px-1 py-0 h-4">
-        {row.original.STATUS}
-      </Badge>
-    ),
-    sortingFn: (rowA, rowB) => getStatusScore(rowA.original) - getStatusScore(rowB.original),
-    size: 50
-  },
-  {
-    accessorKey: 'WRITER',
-    header: ({ column }) => (
-      <Button
-        variant="ghost"
-        size="sm"
-        className="h-6 px-1 text-xs font-medium w-full justify-start"
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-      >
-        처리자
-      </Button>
-    ),
-    cell: ({ row }) => {
-      const { displayText, isTruncated } = truncateText(row.original.WRITER, 6)
-      return (
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="text-xs cursor-default block">{displayText}</span>
-            </TooltipTrigger>
-            {isTruncated && (
-              <TooltipContent>
-                <p>{row.original.WRITER}</p>
-              </TooltipContent>
-            )}
-          </Tooltip>
-        </TooltipProvider>
-      )
-    },
-    size: 30
-  },
-  {
-    accessorKey: 'REQ_DATE_ALL',
-    header: ({ column }) => (
-      <Button
-        variant="ghost"
-        size="sm"
-        className="h-6 px-1 text-xs font-medium w-full justify-start"
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-      >
-        요청일시
-      </Button>
-    ),
-    cell: ({ row }) => {
-      const dateText = row.original.REQ_DATE_ALL
-      const [datePart, timePart] = dateText.includes(' ') ? dateText.split(' ') : [dateText, '']
-      return (
-        <div className="text-xs cursor-default">
-          <div className="font-medium">
-            {datePart} {timePart}
-          </div>
-        </div>
-      )
-    },
-    size: 85
-  },
-  {
-    id: 'add_schedule',
-    header: () => (
-      <Button variant="ghost" size="sm" className="h-6 px-1 text-xs font-medium w-full justify-start">
-        배포
-      </Button>
-    ),
-    cell: () => (
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-5 w-5 hover:bg-blue-100 dark:hover:bg-blue-900/30"
-              onClick={() => alert('구현 예정 ...')}
-            >
-              <CalendarPlus className="h-3 w-3" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>배포일정 추가</TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-    ),
-    size: 35
-  }
-]
-
 const initialSorting: SortingState = []
 export function AlertsDataTable({ data }: { data: AlertItem[] }) {
   const [sorting, setSorting] = useState<SortingState>(initialSorting)
+  const { openAddDialog } = useScheduleStore()
+
+  const columns: ColumnDef<AlertItem>[] = [
+    {
+      id: 'priority',
+      accessorFn: (row) => getPriorityFlagScore(row),
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 px-1 text-xs font-medium w-full justify-start"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+        >
+          우선순위
+        </Button>
+      ),
+      cell: ({ row }) => {
+        const item = row.original
+        if (item.isUrgent)
+          return (
+            <Badge variant="destructive" className="text-[11px] px-1 py-0 h-4">
+              긴급
+            </Badge>
+          )
+        if (item.isDelayed) return <Badge className="text-[11px] px-1 py-0 h-4 bg-amber-100 text-amber-800 hover:bg-amber-100">지연</Badge>
+        if (item.isPending)
+          return (
+            <Badge variant="outline" className="text-[11px] px-1 py-0 h-4 border-blue-200 text-blue-700">
+              미처리
+            </Badge>
+          )
+        return <span className="text-[10px] text-muted-foreground">-</span>
+      },
+      size: 40
+    },
+    {
+      accessorKey: 'CM_NAME',
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 px-1 text-xs font-medium w-full justify-start"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+        >
+          고객사
+        </Button>
+      ),
+      cell: ({ row }) => {
+        const { displayText, isTruncated } = truncateText(row.original.CM_NAME, 8)
+        return (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="text-[11px] font-medium cursor-default block">{displayText}</span>
+              </TooltipTrigger>
+              {isTruncated && (
+                <TooltipContent>
+                  <p>{row.original.CM_NAME}</p>
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </TooltipProvider>
+        )
+      },
+      size: 70
+    },
+    {
+      accessorKey: 'REQ_TITLE',
+      header: () => (
+        <Button variant="ghost" size="sm" className="h-6 px-1 text-xs font-medium w-full justify-start">
+          제목
+        </Button>
+      ),
+      cell: ({ row }) => {
+        const { displayText } = truncateText(row.original.REQ_TITLE, 38)
+        return (
+          <button
+            className="text-xs cursor-pointer block leading-tight text-left hover:text-blue-600 hover:underline transition-colors"
+            onClick={() => window.electron.ipcRenderer.invoke('open-request', row.original.SR_IDX)}
+          >
+            {displayText}
+          </button>
+        )
+      },
+      size: 200
+    },
+    {
+      accessorKey: 'STATUS',
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 px-1 text-xs font-medium w-full justify-start"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+        >
+          상태
+        </Button>
+      ),
+      cell: ({ row }) => (
+        <Badge variant={getStatusVariant(row.original.STATUS)} className="text-[10px] px-1 py-0 h-4">
+          {row.original.STATUS}
+        </Badge>
+      ),
+      sortingFn: (rowA, rowB) => getStatusScore(rowA.original) - getStatusScore(rowB.original),
+      size: 50
+    },
+    {
+      accessorKey: 'WRITER',
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 px-1 text-xs font-medium w-full justify-start"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+        >
+          처리자
+        </Button>
+      ),
+      cell: ({ row }) => {
+        const { displayText, isTruncated } = truncateText(row.original.WRITER, 6)
+        return (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="text-xs cursor-default block">{displayText}</span>
+              </TooltipTrigger>
+              {isTruncated && (
+                <TooltipContent>
+                  <p>{row.original.WRITER}</p>
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </TooltipProvider>
+        )
+      },
+      size: 30
+    },
+    {
+      accessorKey: 'REQ_DATE_ALL',
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 px-1 text-xs font-medium w-full justify-start"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+        >
+          요청일시
+        </Button>
+      ),
+      cell: ({ row }) => {
+        const dateText = row.original.REQ_DATE_ALL
+        const [datePart, timePart] = dateText.includes(' ') ? dateText.split(' ') : [dateText, '']
+        return (
+          <div className="text-xs cursor-default">
+            <div className="font-medium">
+              {datePart} {timePart}
+            </div>
+          </div>
+        )
+      },
+      size: 85
+    },
+    {
+      id: 'add_schedule',
+      header: () => (
+        <Button variant="ghost" size="sm" className="h-6 px-1 text-xs font-medium w-full justify-start">
+          배포
+        </Button>
+      ),
+      cell: ({ row }) => (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-5 w-5 hover:bg-blue-100 dark:hover:bg-blue-900/30"
+                onClick={(e: any) => {
+                  e.stopPropagation()
+                  // Zustand store를 통해 일정 추가 다이얼로그 열기
+                  openAddDialog({
+                    srIdx: row.original.SR_IDX,
+                    customerName: row.original.CM_NAME,
+                    requestTitle: row.original.REQ_TITLE
+                  })
+                }}
+              >
+                <CalendarPlus className="h-3 w-3" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>배포일정 추가</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      ),
+      size: 35
+    }
+  ]
 
   const table = useReactTable({
     data,

@@ -19,6 +19,8 @@ export function SiteHeader() {
         return '알림'
       case '/about':
         return '프로그램 정보'
+      case '/schedule':
+        return '일정'
       default:
         return '업무 알림 시스템'
     }
@@ -31,12 +33,7 @@ export function SiteHeader() {
         <h1 className="text-lg font-semibold">{getPageTitle()}</h1>
         <Separator orientation="vertical" className="mx-2 data-[orientation=vertical]:h-4" />
         <div className="ml-auto flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-            aria-label="Toggle theme"
-          >
+          <Button variant="ghost" size="icon" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} aria-label="Toggle theme">
             {theme === 'dark' ? <SunIcon className="h-5 w-5" /> : <MoonIcon className="h-5 w-5" />}
           </Button>
         </div>

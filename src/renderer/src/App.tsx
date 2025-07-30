@@ -9,6 +9,8 @@ import { UniAlertDialog } from '@/components/uni-alert-dialog'
 import { AboutPage } from '@/pages/about-page'
 import { AlertsPage } from '@/pages/alerts-page'
 import { SettingsPage } from '@/pages/settings-page'
+import { ScheduleAddDialog } from './components/schedule-add-dialog'
+import { SchedulePage } from './pages/schedule-page'
 
 function App() {
   return (
@@ -24,12 +26,14 @@ function App() {
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/alerts" element={<AlertsPage />} />
                 <Route path="/about" element={<AboutPage />} />
+                <Route path="/schedule" element={<SchedulePage />} />
               </Routes>
             </main>
           </SidebarInset>
           <Toaster position="top-right" richColors />
           <LoadingOverlay />
           <UniAlertDialog />
+          <ScheduleAddDialog />
         </SidebarProvider>
       </HashRouter>
     </ThemeProvider>
