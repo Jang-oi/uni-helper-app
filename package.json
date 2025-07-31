@@ -1,6 +1,6 @@
 {
   "name": "uni-helper-app",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "An Electron application with React and TypeScript",
   "main": "./out/main/index.js",
   "author": "Jang-oi",
@@ -52,6 +52,8 @@
     "lucide-react": "^0.526.0",
     "next-themes": "^0.4.6",
     "nodemailer": "^7.0.5",
+    "pino": "^9.7.0",
+    "pino-pretty": "^13.1.1",
     "react-day-picker": "^9.8.1",
     "react-hook-form": "^7.61.1",
     "react-router-dom": "^7.7.1",

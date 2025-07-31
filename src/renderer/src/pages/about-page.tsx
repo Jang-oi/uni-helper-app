@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { AlertCircle, Calendar, CheckCircle, Download, GitCommit, Info, Loader2, RefreshCw, Tag, User } from 'lucide-react'
+import { AlertCircle, Calendar, CheckCircle, Download, FilePen, GitCommit, Info, Loader2, RefreshCw, Tag, Trash2, User } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -10,6 +10,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAlertDialogStore } from '@/store/alert-dialog-store'
+import { useLogStore } from '@/store/log-store'
 
 interface AppInfo {
   version: string
@@ -51,6 +52,8 @@ export function AboutPage() {
   const [showDownloadDialog, setShowDownloadDialog] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string>('')
   const { openConfirm } = useAlertDialogStore()
+
+  const { logs, clearLogs } = useLogStore()
 
   // 업데이트 상태 리스너 등록
   useEffect(() => {
@@ -335,7 +338,7 @@ export function AboutPage() {
         </div>
       </div>
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-        <TabsList className="grid w-full grid-cols-2 h-8">
+        <TabsList className="grid w-full grid-cols-3 h-8">
           <TabsTrigger value="update" className="flex items-center gap-1 text-xs">
             <Download className="h-3 w-3" />
             업데이트 관리
@@ -343,6 +346,10 @@ export function AboutPage() {
           <TabsTrigger value="info" className="flex items-center gap-1 text-xs">
             <GitCommit className="h-3 w-3" />
             업데이트 정보
+          </TabsTrigger>
+          <TabsTrigger value="logs" className="flex items-center gap-1 text-xs">
+            <FilePen className="h-3 w-3" />
+            로그 정보
           </TabsTrigger>
         </TabsList>
         <TabsContent value="update" className="flex-1 mt-2">
@@ -420,6 +427,45 @@ export function AboutPage() {
                       {index < history.length - 1 && <Separator className="mt-4" />}
                     </div>
                   ))}
+                </div>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="logs" className="flex-1 mt-2">
+          <Card className="flex flex-col h-full">
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle>시스템 로그</CardTitle>
+                  <CardDescription>메인 프로세스에서 발생하는 실시간 로그입니다.</CardDescription>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button variant="destructive" size="sm" onClick={clearLogs}>
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    로그 초기화
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="flex-1 p-0">
+              <ScrollArea className="h-[calc(66vh-80px)] p-4">
+                <div className="space-y-2 text-xs font-mono">
+                  {logs.length === 0 ? (
+                    <p className="text-center text-muted-foreground">아직 로그가 없습니다.</p>
+                  ) : (
+                    logs.map((log, index) => (
+                      <div key={index} className="flex gap-2">
+                        <span className="text-muted-foreground">{new Date(log.timestamp).toLocaleTimeString()}</span>
+                        <span
+                          className={log.level === 'error' ? 'text-red-500' : log.level === 'warn' ? 'text-yellow-500' : 'text-foreground'}
+                        >
+                          [{log.level.toUpperCase()}]
+                        </span>
+                        <span className="whitespace-pre-wrap">{log.message}</span>
+                      </div>
+                    ))
+                  )}
                 </div>
               </ScrollArea>
             </CardContent>

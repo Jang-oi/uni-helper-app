@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { useScheduleStore } from '../../store/schedule-store'
+import { useScheduleStore } from '@/store/schedule-store'
 
 export interface AlertItem {
   SR_IDX: string
