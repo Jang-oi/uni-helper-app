@@ -33,9 +33,10 @@ export function ScheduleAddDialog() {
   // 다이얼로그가 열릴 때 데이터 설정
   useEffect(() => {
     if (isAddDialogOpen && dialogData) {
-      form.setValue('title', `[배포] ${dialogData.requestTitle}`)
-      form.setValue('description', `고객사: ${dialogData.customerName}\n요청사항: ${dialogData.requestTitle}\nSR번호: ${dialogData.srIdx}`)
+      form.setValue('title', dialogData.requestTitle ? dialogData.requestTitle : '')
+      form.setValue('description', ``)
       form.setValue('date', format(dialogData.date ?? new Date(), 'yyyy-MM-dd'))
+      form.setValue('time', '18:00')
     } else if (isAddDialogOpen && !dialogData) {
       // 일반 일정 추가인 경우 폼 초기화
       form.reset({
@@ -53,7 +54,6 @@ export function ScheduleAddDialog() {
       const result = await window.electron.ipcRenderer.invoke('add-schedule', {
         ...data,
         srIdx: dialogData?.srIdx || '',
-        customerName: dialogData?.customerName,
         requestTitle: dialogData?.requestTitle
       })
 

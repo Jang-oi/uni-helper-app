@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { Bell, CheckCircle, Clock, Info, Lock, User } from 'lucide-react'
+import { Bell, CheckCircle, Clock, Info, Lock, Mail, User } from 'lucide-react'
 import { toast } from 'sonner'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -18,6 +18,7 @@ type SettingsFormValues = {
   password: string
   checkInterval: number
   enableNotifications: boolean
+  notificationEmail: string
 }
 
 export function SettingsPage() {
@@ -25,7 +26,7 @@ export function SettingsPage() {
   const { setLoading, isLoading, isMonitoring } = useAppStore()
 
   const form = useForm<SettingsFormValues>({
-    defaultValues: { username: '', password: '', checkInterval: 5, enableNotifications: true }
+    defaultValues: { username: '', password: '', checkInterval: 5, enableNotifications: true, notificationEmail: '' }
   })
 
   // 현재 시간 및 업무 시간 확인 로직 (07:00 ~ 20:00 KST)
@@ -176,6 +177,30 @@ export function SettingsPage() {
                       )}
                     />
                   </div>
+                  <FormField
+                    control={form.control}
+                    name="notificationEmail"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs">배포 알림 이메일</FormLabel>
+                        <div className="flex items-center gap-2">
+                          <FormControl>
+                            <div className="relative flex-1">
+                              <Mail className="absolute left-2 top-2 h-3 w-3 text-muted-foreground" />
+                              <Input
+                                {...field}
+                                type="email"
+                                placeholder="email@unipost.co.kr"
+                                className="pl-7 h-8 text-xs"
+                                disabled={isMonitoring}
+                              />
+                            </div>
+                          </FormControl>
+                        </div>
+                        <FormMessage className="text-xs" />
+                      </FormItem>
+                    )}
+                  />
 
                   <FormField
                     control={form.control}

@@ -23,7 +23,6 @@ interface Schedule {
   time: string
   status: 'pending' | 'completed' | 'cancelled'
   createdAt: string
-  customerName?: string
   requestTitle?: string
 }
 
@@ -65,9 +64,7 @@ export function SchedulePage() {
           setSelectedSchedule({ ...selectedSchedule, status })
         }
       } else {
-        toast.error('상태 업데이트 실패', {
-          description: result.error || '상태 업데이트 중 오류가 발생했습니다.'
-        })
+        toast.error('상태 업데이트 실패', { description: result.error || '상태 업데이트 중 오류가 발생했습니다.' })
       }
     } catch (error) {
       console.error('상태 업데이트 중 오류:', error)
@@ -99,6 +96,19 @@ export function SchedulePage() {
   // 컴포넌트 마운트 시 일정 로드
   useEffect(() => {
     loadSchedules()
+  }, [])
+
+  // 전역 일정 추가 이벤트 리스너 추가
+  useEffect(() => {
+    const handleScheduleAdded = () => {
+      loadSchedules()
+    }
+
+    window.addEventListener('schedule-added', handleScheduleAdded)
+
+    return () => {
+      window.removeEventListener('schedule-added', handleScheduleAdded)
+    }
   }, [])
 
   // 일정 추가 다이얼로그 열기 함수
@@ -192,13 +202,10 @@ export function SchedulePage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-full">
             {/* 캘린더 */}
             <Card className="lg:col-span-2">
-              <CardHeader className="pb-3">
+              <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle className="text-sm flex items-center gap-2">
-                      <CalendarIcon className="h-4 w-4" />
-                      일정 캘린더
-                    </CardTitle>
+                    <CardTitle className="text-sm flex items-center">일정 캘린더</CardTitle>
                     <CardDescription className="text-xs">날짜를 클릭하여 해당 날짜의 일정을 확인하세요.</CardDescription>
                   </div>
                   <Button size="sm" onClick={handleOpenAddDialog} className="h-7 text-xs">
@@ -240,7 +247,7 @@ export function SchedulePage() {
                 <CardDescription className="text-xs">{selectedDateSchedules.length}개의 일정이 있습니다.</CardDescription>
               </CardHeader>
               <CardContent className="p-0">
-                <ScrollArea className="h-[400px]">
+                <ScrollArea className="h-[500px]">
                   {selectedDateSchedules.length === 0 ? (
                     <div className="p-4 text-center text-muted-foreground text-xs">이 날짜에는 일정이 없습니다.</div>
                   ) : (
@@ -325,7 +332,7 @@ export function SchedulePage() {
                           {schedule.srIdx && (
                             <div className="flex items-center gap-1 mt-2">
                               <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
-                                SR: {schedule.srIdx}
+                                접수번호: {schedule.srIdx}
                               </Badge>
                             </div>
                           )}
@@ -384,8 +391,12 @@ export function SchedulePage() {
                 <>
                   <Separator />
                   <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="text-xs">
-                      연관 SR: {selectedSchedule.srIdx}
+                    <Badge
+                      variant="outline"
+                      className="text-xs cursor-pointer hover:bg-muted" // 클릭 가능하도록 스타일
+                      onClick={() => window.electron.ipcRenderer.invoke('open-request', selectedSchedule.srIdx)}
+                    >
+                      접수 번호: {selectedSchedule.srIdx}
                     </Badge>
                   </div>
                 </>

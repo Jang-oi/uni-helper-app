@@ -235,12 +235,7 @@ export function AlertsDataTable({ data }: { data: AlertItem[] }) {
                 className="h-5 w-5 hover:bg-blue-100 dark:hover:bg-blue-900/30"
                 onClick={(e: any) => {
                   e.stopPropagation()
-                  // Zustand store를 통해 일정 추가 다이얼로그 열기
-                  openAddDialog({
-                    srIdx: row.original.SR_IDX,
-                    customerName: row.original.CM_NAME,
-                    requestTitle: row.original.REQ_TITLE
-                  })
+                  openAddDialog({ srIdx: row.original.SR_IDX, requestTitle: row.original.CM_NAME })
                 }}
               >
                 <CalendarPlus className="h-3 w-3" />

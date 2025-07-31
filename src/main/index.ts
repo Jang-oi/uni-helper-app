@@ -44,6 +44,7 @@ function createWindow(): void {
       sandbox: false
     }
   })
+  mainWindow.setMenu(null)
 
   mainWindow.webContents.on('before-input-event', (event, input) => {
     // F12 키를 누르면 개발자 도구를 열거나 닫습니다.

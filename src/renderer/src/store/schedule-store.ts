@@ -2,7 +2,6 @@ import { create } from 'zustand'
 
 interface ScheduleDialogData {
   srIdx?: string
-  customerName?: string
   requestTitle?: string
   date?: Date
 }

@@ -2,6 +2,7 @@ import { join } from 'path'
 import { app, BrowserWindow, ipcMain, Notification, shell } from 'electron'
 import Store from 'electron-store'
 import { autoUpdater } from 'electron-updater'
+import * as nodemailer from 'nodemailer'
 import { uniIcon } from './index'
 
 // --- 타입 정의 ---
@@ -11,6 +12,7 @@ interface Settings {
   checkInterval?: number
   enableNotifications?: boolean
   startAtLogin?: boolean
+  notificationEmail?: boolean
 }
 
 // 스크래핑된 원본 데이터 타입 (실제 데이터에 맞게 필드 추가/수정)
@@ -42,9 +44,16 @@ interface Schedule {
   time: string
   status: 'pending' | 'completed' | 'cancelled'
   createdAt: string
-  customerName?: string
   requestTitle?: string
+  notificationSent?: boolean
 }
+
+// Nodemailer transporter 생성 (앱 초기화 시 한 번만 생성)
+const transporter = nodemailer.createTransport({
+  host: '192.168.11.17', // 제공해주신 SMTP 서버 주소
+  port: 25, // 기본 SMTP 포트. 필요시 변경
+  secure: false // TLS/SSL 사용 여부. 내부망이므로 false일 가능성이 높음
+})
 
 const SUPPORT_URL = 'https://114.unipost.co.kr/home.uni'
 const BUSINESS_HOURS_START = 7 // 오전 7시
@@ -58,6 +67,112 @@ let isMonitoring = false
 let monitoringInterval: NodeJS.Timeout | null = null
 // 앱 세션 동안 수동 시작 여부를 추적하는 플래그
 let isManualStartTriggeredInSession = false
+
+/**
+ * 특정 일정에 대한 알림 메일을 발송하는 함수
+ * @param schedule - 메일을 보낼 대상 일정 객체
+ */
+async function sendNotificationEmail(schedule: Schedule) {
+  // 받는 사람 이메일 주소는 설정에서 가져오는 것이 좋습니다.
+  const settings = store.get('settings', {}) as Settings
+  const recipientEmail = settings.notificationEmail // 예: 설정에 notificationEmail 필드 추가
+
+  if (!recipientEmail) {
+    console.log('알림을 받을 이메일 주소가 설정되지 않았습니다.')
+    return
+  }
+
+  try {
+    await transporter.sendMail({
+      from: '"일정 알리미" <uni-helper@unidocu.unipost.co.kr>',
+      to: recipientEmail, // 받는 사람
+      subject: `[일정 알림] "${schedule.title}" 일정 시간이 1시간 남았습니다.`,
+      html: `
+  <div style="font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', Dotum, '돋움', sans-serif; max-width: 600px; margin: 40px auto; border: 1px solid #e0e0e0; border-radius: 10px;">
+
+    <div style="background-color: #f7faff; padding: 25px; border-bottom: 1px solid #e0e0e0; text-align: center; border-radius: 10px 10px 0 0;">
+      <h1 style="font-size: 26px; color: #0056b3; margin: 0; font-weight: 700;">🚀 일정 예정 알림</h1>
+    </div>
+
+    <div style="padding: 25px 30px;">
+      <p style="font-size: 16px; color: #333; line-height: 1.6;">
+        잠시 후 아래 내용의 일정 작업이 예정되어 있습니다.<br>
+        잊지 않도록 미리 준비해 주세요.
+      </p>
+
+      <div style="background-color: #ffffff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; margin-top: 20px;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+          <tbody>
+            <tr>
+              <td style="padding: 10px; width: 90px; color: #888;">일정 내용</td>
+              <td style="padding: 10px; color: #333; font-weight: 600;">${schedule.title}</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px; color: #888;">일정 시간</td>
+              <td style="padding: 10px; color: #333; font-weight: 600;">${schedule.date} ${schedule.time}</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px; color: #888;">참고 사항</td>
+              <td style="padding: 10px; color: #333;">${schedule.description || '없음'}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      ${
+        schedule.srIdx
+          ? `
+      <div style="text-align: center; margin-top: 30px;">
+        <a href="${SUPPORT_URL}?access=list&srIdx=${schedule.srIdx}" target="_blank" style="display: inline-block; padding: 12px 28px; font-size: 16px; font-weight: bold; color: #ffffff; background-color: #007bff; border-radius: 5px; text-decoration: none;">
+          일정내용 확인하기
+        </a>
+      </div>
+      `
+          : ''
+      }
+
+    </div>
+
+    <div style="text-align: center; padding: 20px; border-top: 1px solid #e0e0e0; background-color: #f7faff; border-radius: 0 0 10px 10px;">
+      <p style="font-size: 12px; color: #aaa; margin: 0;">본 메일은 Uni Helper에서 자동으로 발송되었습니다.</p>
+    </div>
+
+  </div>
+`
+    })
+
+    console.log(`[메일 발송 성공] 일정 ID: ${schedule.id}`)
+
+    // 메일 발송 성공 시, 해당 일정에 플래그를 설정하여 중복 발송을 방지합니다.
+    const schedules = store.get('schedules', []) as Schedule[]
+    const scheduleIndex = schedules.findIndex((s) => s.id === schedule.id)
+    if (scheduleIndex !== -1) {
+      schedules[scheduleIndex].notificationSent = true
+      store.set('schedules', schedules)
+    }
+  } catch (error) {
+    console.error(`[메일 발송 실패] 일정 ID: ${schedule.id}`, error)
+  }
+}
+
+/**
+ * 예정된 일정을 주기적으로 확인하여 알림 메일을 발송하는 함수
+ */
+async function checkSchedulesAndSendNotifications() {
+  const schedules = store.get('schedules', []) as Schedule[]
+  const now = new Date()
+
+  for (const schedule of schedules) {
+    // '예정' 상태이고, 아직 알림이 발송되지 않은 일정만 대상으로 함
+    if (schedule.status !== 'pending' || schedule.notificationSent) continue
+
+    const scheduleTime = new Date(`${schedule.date}T${schedule.time}`)
+    const notificationTime = new Date(scheduleTime.getTime() - 60 * 60 * 1000) // 1시간 전
+
+    // 현재 시간이 알림 시간(1시간 전) 이후이고, 실제 일정 시간 이전일 경우 메일 발송
+    if (now >= notificationTime && now < scheduleTime) await sendNotificationEmail(schedule)
+  }
+}
 
 /**
  * 업데이트 상태를 렌더러 프로세스로 전송하는 함수
@@ -633,7 +748,6 @@ export function initializeIpcHandlers(win: BrowserWindow): void {
         time: scheduleData.time,
         status: 'pending',
         createdAt: new Date().toISOString(),
-        customerName: scheduleData.customerName,
         requestTitle: scheduleData.requestTitle
       }
 
@@ -687,4 +801,5 @@ export function initializeIpcHandlers(win: BrowserWindow): void {
   })
 
   setInterval(stateCheckLoop, 5 * 60 * 1000) // 5분 간격으로 상태 체크
+  setInterval(checkSchedulesAndSendNotifications, 60 * 1000)
 }
