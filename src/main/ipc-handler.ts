@@ -84,6 +84,22 @@ let isMonitoring = false
 let monitoringInterval: NodeJS.Timeout | null = null
 let isManualStartTriggeredInSession = false
 
+/**
+ * supportWindow를 보여주거나 숨기는 토글 함수
+ */
+export function toggleSupportWindow(): void {
+  if (!supportWindow) {
+    console.log('supportWindow가 아직 생성되지 않았습니다.')
+    return
+  }
+
+  if (supportWindow.isVisible()) {
+    supportWindow.hide()
+  } else {
+    supportWindow.show()
+  }
+}
+
 async function sendNotificationEmail(schedule: Schedule) {
   const settings = store.get('settings', {}) as Settings
   const recipientEmail = settings.notificationEmail
@@ -476,6 +492,11 @@ export function initializeIpcHandlers(win: BrowserWindow): void {
     width: 1200,
     height: 800,
     webPreferences: { preload: join(__dirname, '../preload/index.js') }
+  })
+
+  supportWindow.on('close', (event) => {
+    event.preventDefault() // 앱 종료 방지
+    supportWindow?.hide() // 대신 숨기기
   })
 
   supportWindow.loadURL(SUPPORT_URL)

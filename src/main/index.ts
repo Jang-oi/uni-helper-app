@@ -4,7 +4,7 @@ import { join } from 'path'
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
 import { app, BrowserWindow, Menu, shell, Tray } from 'electron'
 // 1. IPC 핸들러 초기화 함수 import
-import { initializeIpcHandlers } from './ipc-handler'
+import { initializeIpcHandlers, toggleSupportWindow } from './ipc-handler'
 
 export const uniIcon = is.dev
   ? join(__dirname, '../../build/icon.ico') // 개발 환경 경로
@@ -94,6 +94,19 @@ function createWindow(): void {
 const createTray = () => {
   tray = new Tray(uniIcon)
   const contextMenu = Menu.buildFromTemplate([
+    {
+      label: 'Uni Helper 열기',
+      click: () => {
+        mainWindow.show() // 메인 창을 보여줍니다.
+      }
+    },
+    {
+      label: 'Support 창 열기',
+      click: () => {
+        toggleSupportWindow()
+      }
+    },
+    { type: 'separator' }, // 구분선
     {
       label: '종료',
       click: () => {
