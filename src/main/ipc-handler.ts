@@ -84,22 +84,6 @@ let isMonitoring = false
 let monitoringInterval: NodeJS.Timeout | null = null
 let isManualStartTriggeredInSession = false
 
-/**
- * supportWindow를 보여주거나 숨기는 토글 함수
- */
-export function toggleSupportWindow(): void {
-  if (!supportWindow) {
-    console.log('supportWindow가 아직 생성되지 않았습니다.')
-    return
-  }
-
-  if (supportWindow.isVisible()) {
-    supportWindow.hide()
-  } else {
-    supportWindow.show()
-  }
-}
-
 async function sendNotificationEmail(schedule: Schedule) {
   const settings = store.get('settings', {}) as Settings
   const recipientEmail = settings.notificationEmail
@@ -383,18 +367,22 @@ async function scrapeDataFromSite() {
           const tabId = li.getAttribute('aria-controls');
           const iframe = document.getElementById(tabId);
           if (!iframe || !iframe.contentWindow) return { success: false, message: "iframe을 찾을 수 없습니다" };
+          iframe.contentWindow.UNIUX.Mask();
           await waitForLoadingToFinish(iframe.contentDocument);
+          iframe.contentWindow.UNIUX.removeMask();
           iframe.contentWindow.UNIUX.SVC('PROGRESSION_TYPE', 'R,E,O,A,C,N,M');
           iframe.contentWindow.UNIUX.SVC('RECEIPT_INFO_SEARCH_TYPE', 'A');
           iframe.contentWindow.UNIUX.SVC('START_DATE',new Date(new Date().setFullYear(new Date().getFullYear() - 1)).toISOString().split('T')[0]);
           iframe.contentDocument.querySelector('#doSearch').click();
           await waitForLoadingToFinish(iframe.contentDocument);
+          iframe.contentWindow.UNIUX.removeMask();
           const allRequestsData = iframe.contentWindow.grid.getAllRowValue();
           const currentUsername = document.querySelector('.userNm').textContent.trim();
           iframe.contentWindow.UNIUX.SVC('RECEIPT_INFO_SEARCH_TYPE', 'P');
           iframe.contentWindow.UNIUX.SVC('RECEIPT_INFO_TEXT', currentUsername);
           iframe.contentDocument.querySelector('#doSearch').click();
           await waitForLoadingToFinish(iframe.contentDocument);
+          iframe.contentWindow.UNIUX.removeMask();
           const personalRequestsData = iframe.contentWindow.grid.getAllRowValue();
           return { success: true, allRequestsData, personalRequestsData };
         } catch (error) {
@@ -492,11 +480,6 @@ export function initializeIpcHandlers(win: BrowserWindow): void {
     width: 1200,
     height: 800,
     webPreferences: { preload: join(__dirname, '../preload/index.js') }
-  })
-
-  supportWindow.on('close', (event) => {
-    event.preventDefault() // 앱 종료 방지
-    supportWindow?.hide() // 대신 숨기기
   })
 
   supportWindow.loadURL(SUPPORT_URL)

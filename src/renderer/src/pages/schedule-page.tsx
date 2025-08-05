@@ -118,6 +118,8 @@ export function SchedulePage() {
 
   // 선택된 날짜의 일정 필터링 및 완료 상태 확인
   const selectedDateSchedules = schedules.filter((schedule) => isSameDay(parseISO(schedule.date), selectedDate))
+  const pendingSchedules = schedules.filter((schedule) => schedule.status === 'pending')
+  const pendingCount = pendingSchedules.length
 
   // 캘린더에 일정이 있는 날짜와 완료된 일정만 있는 날짜 구분
   const scheduleDates = schedules.map((schedule) => parseISO(schedule.date))
@@ -181,7 +183,7 @@ export function SchedulePage() {
         </div>
         <div className="flex items-center gap-2 ml-auto">
           <Badge variant="outline" className="text-xs text-indigo-700">
-            총 {schedules.length}개 일정
+            총 {pendingCount}개 일정
           </Badge>
         </div>
       </div>
