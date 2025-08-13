@@ -384,6 +384,7 @@ async function scrapeDataFromSite() {
           await waitForLoadingToFinish(iframe.contentDocument);
           iframe.contentWindow.UNIUX.removeMask();
           const personalRequestsData = iframe.contentWindow.grid.getAllRowValue();
+          iframe.contentWindow.UNIUX.removeMask();
           return { success: true, allRequestsData, personalRequestsData };
         } catch (error) {
           return { success: false, message: "데이터 스크래핑 오류: " + error.message };
@@ -476,7 +477,7 @@ function stateCheckLoop() {
 export function initializeIpcHandlers(win: BrowserWindow): void {
   mainWindow = win
   supportWindow = new BrowserWindow({
-    show: false,
+    show: true,
     width: 1200,
     height: 800,
     webPreferences: { preload: join(__dirname, '../preload/index.js') }
