@@ -477,7 +477,7 @@ function stateCheckLoop() {
 export function initializeIpcHandlers(win: BrowserWindow): void {
   mainWindow = win
   supportWindow = new BrowserWindow({
-    show: true,
+    show: false,
     width: 1200,
     height: 800,
     webPreferences: { preload: join(__dirname, '../preload/index.js') }
