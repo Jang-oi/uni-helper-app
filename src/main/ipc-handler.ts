@@ -349,42 +349,72 @@ async function scrapeDataFromSite() {
     if (!supportWindow) return { success: false, message: 'Support window is not available.' }
     const result = await supportWindow.webContents.executeJavaScript(`
       (async function() {
-        function waitForLoadingToFinish(iframeDoc) {
-          return new Promise((resolve) => {
-            const loadingArea = iframeDoc.querySelector('.loading-area');
-            if (!loadingArea) { resolve(); return; }
-            const checkDisplay = () => {
+        function waitForLoadingToFinish(iframeDoc, timeout = 10000) {
+          return new Promise((resolve, reject) => {
+            const startTime = Date.now();
+
+            const checkLoading = () => {
+              const loadingArea = iframeDoc.querySelector('.loading-area');
+
+              // 로딩 엘리먼트가 아예 없으면 로딩 완료로 간주
+              if (!loadingArea) {
+                resolve();
+                return;
+              }
+
               const style = window.getComputedStyle(loadingArea);
-              if (style.display === 'none') { clearInterval(interval); resolve(); }
+
+              // 로딩바가 사라졌으면 완료
+              if (style.display === 'none') {
+                resolve();
+                return;
+              }
+
+              // 타임아웃 체크
+              if (Date.now() - startTime > timeout) {
+                console.warn('로딩 타임아웃 발생, 강제로 진행합니다.');
+                resolve(); // reject 대신 resolve로 진행
+                return;
+              }
+
+              // 계속 체크
+              setTimeout(checkLoading, 100);
             };
-            const interval = setInterval(checkDisplay, 100);
-            checkDisplay();
+
+            checkLoading();
           });
         }
+
         try {
           const li = document.querySelector('li[title="요청내역관리"], li[name="요청내역관리"]');
           if (!li) return { success: false, message: "요청내역관리 탭을 찾을 수 없습니다" };
           const tabId = li.getAttribute('aria-controls');
           const iframe = document.getElementById(tabId);
           if (!iframe || !iframe.contentWindow) return { success: false, message: "iframe을 찾을 수 없습니다" };
+
           iframe.contentWindow.UNIUX.Mask();
+
           await waitForLoadingToFinish(iframe.contentDocument);
           iframe.contentWindow.UNIUX.removeMask();
+
           iframe.contentWindow.UNIUX.SVC('PROGRESSION_TYPE', 'R,E,O,A,C,N,M');
           iframe.contentWindow.UNIUX.SVC('RECEIPT_INFO_SEARCH_TYPE', 'A');
           iframe.contentWindow.UNIUX.SVC('START_DATE',new Date(new Date().setFullYear(new Date().getFullYear() - 1)).toISOString().split('T')[0]);
           iframe.contentDocument.querySelector('#doSearch').click();
+
           await waitForLoadingToFinish(iframe.contentDocument);
           iframe.contentWindow.UNIUX.removeMask();
           const allRequestsData = iframe.contentWindow.grid.getAllRowValue();
+
           const currentUsername = document.querySelector('.userNm').textContent.trim();
           iframe.contentWindow.UNIUX.SVC('RECEIPT_INFO_SEARCH_TYPE', 'P');
           iframe.contentWindow.UNIUX.SVC('RECEIPT_INFO_TEXT', currentUsername);
           iframe.contentDocument.querySelector('#doSearch').click();
+
           await waitForLoadingToFinish(iframe.contentDocument);
           iframe.contentWindow.UNIUX.removeMask();
           const personalRequestsData = iframe.contentWindow.grid.getAllRowValue();
-          iframe.contentWindow.UNIUX.removeMask();
+
           return { success: true, allRequestsData, personalRequestsData };
         } catch (error) {
           return { success: false, message: "데이터 스크래핑 오류: " + error.message };
